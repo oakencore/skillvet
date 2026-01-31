@@ -43,19 +43,19 @@ Born from a real incident — a malware skill disguised as a legitimate tool on 
 Installs, audits, and auto-removes the skill if critical issues are found:
 
 ```bash
-bash scripts/safe-install.sh <skill-slug>
+bash skills/skill-audit/scripts/safe-install.sh <skill-slug>
 ```
 
 ### Audit an existing skill
 
 ```bash
-bash scripts/skill-audit.sh path/to/skill-directory
+bash skills/skill-audit/scripts/skill-audit.sh skills/some-skill
 ```
 
 ### Audit all installed skills
 
 ```bash
-for d in ./skills/*/; do bash scripts/skill-audit.sh "$d"; echo; done
+for d in skills/*/; do bash skills/skill-audit/scripts/skill-audit.sh "$d"; echo; done
 ```
 
 ### Exit codes

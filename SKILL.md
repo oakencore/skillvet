@@ -18,13 +18,13 @@ This scanner catches those attacks automatically.
 **Safe install** (recommended — installs, audits, auto-removes if critical issues found):
 
 ```bash
-bash scripts/safe-install.sh <skill-slug>
+bash skills/skill-audit/scripts/safe-install.sh <skill-slug>
 ```
 
 **Audit an already-installed skill:**
 
 ```bash
-bash scripts/skill-audit.sh path/to/skill-directory
+bash skills/skill-audit/scripts/skill-audit.sh skills/some-skill
 ```
 
 **Exit codes:** 0 = clean, 1 = warnings only, 2 = critical findings.
@@ -66,10 +66,10 @@ bash scripts/skill-audit.sh path/to/skill-directory
 
 ```bash
 # Install with automatic audit
-bash scripts/safe-install.sh my-skill
+bash skills/skill-audit/scripts/safe-install.sh my-skill
 
 # Pass extra args to clawdhub
-bash scripts/safe-install.sh my-skill --version 1.2.3
+bash skills/skill-audit/scripts/safe-install.sh my-skill --version 1.2.3
 ```
 
 If critical issues are found, the skill is automatically removed and you'll see what was detected. If you've manually reviewed the skill and trust it, install directly with `clawdhub install`.
@@ -78,10 +78,10 @@ If critical issues are found, the skill is automatically removed and you'll see 
 
 ```bash
 # Single skill
-bash scripts/skill-audit.sh ./skills/some-skill
+bash skills/skill-audit/scripts/skill-audit.sh skills/some-skill
 
 # All installed skills
-for d in ./skills/*/; do bash scripts/skill-audit.sh "$d"; echo; done
+for d in skills/*/; do bash skills/skill-audit/scripts/skill-audit.sh "$d"; echo; done
 ```
 
 ## Limitations
