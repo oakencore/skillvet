@@ -86,7 +86,7 @@ Static analysis via pattern matching across all text files in a skill directory 
 ## Install
 
 ```bash
-clawdhub install skill-audit
+clawdhub install skillvet
 ```
 
 ## Licence
