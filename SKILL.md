@@ -1,6 +1,6 @@
 ---
 name: skillvet
-description: Security scanner for ClawHub/community skills — detects malware, credential theft, exfiltration, prompt injection, and obfuscation before you install. Use when installing skills from ClawHub or any public marketplace, reviewing third-party agent skills for safety, or vetting untrusted code before giving it to your AI agent. Triggers: install skill, audit skill, check skill, vet skill, skill security, safe install, is this skill safe.
+description: "Security scanner for ClawHub/community skills — detects malware, credential theft, exfiltration, prompt injection, and obfuscation before you install. Use when installing skills from ClawHub or any public marketplace, reviewing third-party agent skills for safety, or vetting untrusted code before giving it to your AI agent. Triggers: install skill, audit skill, check skill, vet skill, skill security, safe install, is this skill safe."
 ---
 
 # Skillvet
