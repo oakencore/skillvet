@@ -167,6 +167,22 @@ while IFS= read -r file; do
   fi
 done < <(find "$SKILL_DIR" -name ".env" -o -name ".env.local" -o -name ".env.production" 2>/dev/null || true)
 
+# 16. Homograph characters (IDN homograph attack)
+while IFS= read -r file; do
+  rel_file="${file#$SKILL_DIR/}"
+  if grep -Pq '[\x{0430}\x{0435}\x{043E}\x{0440}\x{0441}\x{0445}\x{0456}\x{0458}\x{0455}\x{0410}\x{0412}\x{0421}\x{0415}\x{041D}\x{041A}\x{041C}\x{041E}\x{0420}\x{0422}\x{0425}]' "$file" 2>/dev/null; then
+    add_finding "CRITICAL" "$rel_file" "?" "Homograph characters — Cyrillic lookalikes mimicking Latin letters (IDN attack)"
+  fi
+done < <(find "$SKILL_DIR" -type f \( -name "*.md" -o -name "*.js" -o -name "*.ts" -o -name "*.py" -o -name "*.sh" -o -name "*.json" -o -name "*.yaml" -o -name "*.yml" -o -name "*.toml" \) 2>/dev/null || true)
+
+# 17. ANSI escape injection in data files
+while IFS= read -r file; do
+  rel_file="${file#$SKILL_DIR/}"
+  if grep -Pq '\x1b' "$file" 2>/dev/null; then
+    add_finding "CRITICAL" "$rel_file" "?" "Raw ANSI escape sequences — possible terminal display manipulation"
+  fi
+done < <(find "$SKILL_DIR" -type f \( -name "*.md" -o -name "*.txt" -o -name "*.json" -o -name "*.yaml" -o -name "*.yml" -o -name "*.toml" \) 2>/dev/null || true)
+
 # --- WARNING CHECKS ---
 
 # Subprocess execution
@@ -204,6 +220,12 @@ while IFS=: read -r file line content; do
   fi
   add_finding "WARNING" "$rel_file" "$line" "Requires unknown external tool: ${content:0:120}"
 done < <(grep -rniE '(requires?|must install|prerequisite|install.*first|download.*before).*\b[a-z][a-z0-9_-]+cli\b' "$SKILL_DIR" --include='*.md' 2>/dev/null || true)
+
+# Insecure transport
+while IFS=: read -r file line content; do
+  rel_file="${file#$SKILL_DIR/}"
+  add_finding "WARNING" "$rel_file" "$line" "Insecure transport — TLS verification disabled: ${content:0:120}"
+done < <(grep -rnE '(curl\s+.*(-k|--insecure)\b|wget\s+.*--no-check-certificate|NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*.0.|verify\s*=\s*False)' "$SKILL_DIR" --include='*.js' --include='*.ts' --include='*.py' --include='*.sh' 2>/dev/null || true)
 
 # --- RESULTS ---
 echo ""
