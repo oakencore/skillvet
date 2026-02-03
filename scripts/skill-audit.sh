@@ -1,15 +1,25 @@
 #!/usr/bin/env bash
-# skill-audit.sh — Security scanner for ClawdHub skills
-# Usage: skill-audit.sh <skill-directory>
+# skill-audit.sh — Security scanner for ClawHub skills
+# Usage: skill-audit.sh [--json] [--summary] <skill-directory>
 # Returns: 0 = clean, 1 = warnings only, 2 = critical findings
 
 set -uo pipefail
 
-SKILL_DIR="${1:?Usage: skill-audit.sh <skill-directory>}"
+JSON_MODE=0
+SUMMARY_MODE=0
+while [[ "${1:-}" == --* ]]; do
+  case "$1" in
+    --json) JSON_MODE=1; shift ;;
+    --summary) SUMMARY_MODE=1; shift ;;
+    *) echo "Unknown flag: $1" >&2; exit 2 ;;
+  esac
+done
+
+SKILL_DIR="${1:?Usage: skill-audit.sh [--json] [--summary] <skill-directory>}"
 SKILL_NAME="$(basename "$SKILL_DIR")"
 
 if [ ! -d "$SKILL_DIR" ]; then
-  echo "❌ Directory not found: $SKILL_DIR"
+  echo "❌ Directory not found: $SKILL_DIR" >&2
   exit 2
 fi
 
@@ -21,6 +31,16 @@ NC='\033[0m'
 CRITICAL=0
 WARNINGS=0
 FINDINGS=""
+JSON_FINDINGS=""
+
+json_escape() {
+  local s="$1"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  s="${s//$'\n'/\\n}"
+  s="${s//$'\t'/\\t}"
+  printf '"%s"' "$s"
+}
 
 add_finding() {
   local severity="$1" file="$2" line="$3" desc="$4"
@@ -31,11 +51,15 @@ add_finding() {
     FINDINGS+="${YELLOW}🟡 WARNING${NC}  [$file:$line] $desc\n"
     WARNINGS=$((WARNINGS + 1))
   fi
+  [ -n "$JSON_FINDINGS" ] && JSON_FINDINGS+=","
+  JSON_FINDINGS+="{\"severity\":\"$severity\",\"file\":$(json_escape "$file"),\"line\":$(json_escape "$line"),\"description\":$(json_escape "$desc")}"
 }
 
-echo "🔍 Auditing skill: $SKILL_NAME"
-echo "   Path: $SKILL_DIR"
-echo "---"
+if [ $JSON_MODE -eq 0 ] && [ $SUMMARY_MODE -eq 0 ]; then
+  echo "🔍 Auditing skill: $SKILL_NAME"
+  echo "   Path: $SKILL_DIR"
+  echo "---"
+fi
 
 # Collect all text files (skip binaries, images, etc.)
 FILES=$(find "$SKILL_DIR" -type f \( -name "*.md" -o -name "*.js" -o -name "*.ts" -o -name "*.py" -o -name "*.sh" -o -name "*.bash" -o -name "*.json" -o -name "*.yaml" -o -name "*.yml" -o -name "*.toml" -o -name "*.txt" -o -name "*.env*" -o -name "Dockerfile*" -o -name "Makefile" \) 2>/dev/null || true)
@@ -45,9 +69,11 @@ if [ -z "$FILES" ]; then
   exit 0
 fi
 
-FILE_COUNT=$(echo "$FILES" | wc -l)
-echo "   Scanning $FILE_COUNT files..."
-echo ""
+FILE_COUNT=$(echo "$FILES" | wc -l | tr -d ' ')
+if [ $JSON_MODE -eq 0 ] && [ $SUMMARY_MODE -eq 0 ]; then
+  echo "   Scanning $FILE_COUNT files..."
+  echo ""
+fi
 
 # --- CRITICAL CHECKS ---
 
@@ -267,6 +293,27 @@ while IFS=: read -r file line content; do
 done < <(grep -rnE '(docker\s+(pull|run)\s+[a-z0-9.-]+\.[a-z]{2,}/|FROM\s+[a-z0-9.-]+\.[a-z]{2,}/)' "$SKILL_DIR" --include='*.js' --include='*.ts' --include='*.py' --include='*.sh' --include='Dockerfile*' --include='*.yaml' --include='*.yml' 2>/dev/null || true)
 
 # --- RESULTS ---
+
+STATUS="clean"
+EXIT_CODE=0
+if [ $WARNINGS -gt 0 ]; then STATUS="caution"; EXIT_CODE=1; fi
+if [ $CRITICAL -gt 0 ]; then STATUS="blocked"; EXIT_CODE=2; fi
+
+if [ $JSON_MODE -eq 1 ]; then
+  printf '{"skill":%s,"path":%s,"files_scanned":%s,"summary":{"critical":%d,"warnings":%d,"status":"%s"},"findings":[%s]}\n' \
+    "$(json_escape "$SKILL_NAME")" "$(json_escape "$SKILL_DIR")" "$FILE_COUNT" "$CRITICAL" "$WARNINGS" "$STATUS" "$JSON_FINDINGS"
+  exit $EXIT_CODE
+fi
+
+if [ $SUMMARY_MODE -eq 1 ]; then
+  if [ $EXIT_CODE -eq 0 ]; then
+    echo "skillvet: $SKILL_NAME — clean"
+  else
+    echo "skillvet: $SKILL_NAME — $STATUS ($CRITICAL critical, $WARNINGS warnings)"
+  fi
+  exit $EXIT_CODE
+fi
+
 echo ""
 if [ $CRITICAL -eq 0 ] && [ $WARNINGS -eq 0 ]; then
   printf "${GREEN}✅ CLEAN${NC} — No issues found in %s\n" "$SKILL_NAME"

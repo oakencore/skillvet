@@ -17,6 +17,12 @@ Skillvet scans skills **before** you use them. It runs 21 critical checks and 8 
 bash skills/skillvet/scripts/safe-install.sh <skill-slug>
 ```
 
+**Scan before installing** — downloads a skill to a temp directory, scans it, deletes it:
+
+```bash
+bash skills/skillvet/scripts/scan-remote.sh <skill-slug>
+```
+
 **Audit a skill you already have:**
 
 ```bash
@@ -29,7 +35,25 @@ bash skills/skillvet/scripts/skill-audit.sh skills/some-skill
 for d in skills/*/; do bash skills/skillvet/scripts/skill-audit.sh "$d"; done
 ```
 
+**Diff scan** — after an update, scan only what changed between versions:
+
+```bash
+bash skills/skillvet/scripts/diff-scan.sh skills/old-version skills/new-version
+```
+
 Exit codes: `0` clean, `1` warnings only, `2` critical findings (blocked).
+
+### Output formats
+
+All scripts accept `--json` for structured output and `--summary` for a single-line result.
+
+```bash
+# JSON — for CI pipelines and dashboards
+bash skills/skillvet/scripts/skill-audit.sh --json skills/some-skill
+
+# Summary — for batch scanning and notifications
+for d in skills/*/; do bash skills/skillvet/scripts/skill-audit.sh --summary "$d"; done
+```
 
 ## What it catches
 
