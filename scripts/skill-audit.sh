@@ -233,6 +233,32 @@ while IFS=: read -r file line content; do
   add_finding "CRITICAL" "$rel_file" "$line" "Insecure pipe-to-shell — HTTP without TLS piped to interpreter: ${content:0:120}"
 done < <(grep -rnE '(curl|wget)\s+[^|]*http://[^|]*\|\s*(bash|sh|zsh|python|node|ruby|perl)' "$SKILL_DIR" --include='*.js' --include='*.ts' --include='*.py' --include='*.sh' --include='*.md' 2>/dev/null || true)
 
+# 22. String construction evasion
+while IFS=: read -r file line content; do
+  rel_file="${file#$SKILL_DIR/}"
+  add_finding "CRITICAL" "$rel_file" "$line" "String construction evasion — assembling dangerous calls from fragments: ${content:0:120}"
+done < <(grep -rnE "('[a-z]{1,4}'\s*\+\s*'[a-z]{1,4}'|\"[a-z]{1,4}\"\s*\+\s*\"[a-z]{1,4}\"|(window|global|globalThis|self)\[.{1,30}\]|String\.fromCharCode|\.split\(['\"].*['\"\)]\)\.reverse\(\)\.join|global\[.require.\]|getattr\s*\(\s*(os|sys|builtins)|const\s*\{[^}]*:\s*\w+\s*\}\s*=\s*require\s*\(\s*['\"]child_process)" "$SKILL_DIR" --include='*.js' --include='*.ts' --include='*.py' 2>/dev/null || true)
+
+# 23. Data flow chain analysis (read → encode → send in same file)
+while IFS= read -r file; do
+  rel_file="${file#$SKILL_DIR/}"
+  has_read=0
+  has_encode=0
+  has_send=0
+  grep -qE '(process\.env|os\.environ|dotenv|load_dotenv|readFileSync|os\.getenv)' "$file" 2>/dev/null && has_read=1
+  grep -qE '(btoa|atob|base64|Buffer\.from|encodeURIComponent|b64encode|b64decode)' "$file" 2>/dev/null && has_encode=1
+  grep -qE '(fetch\(|axios\.|http\.request|requests\.(post|put|get)|urllib\.request|curl |wget |socket\.connect)' "$file" 2>/dev/null && has_send=1
+  if [ $has_read -eq 1 ] && [ $has_encode -eq 1 ] && [ $has_send -eq 1 ]; then
+    add_finding "CRITICAL" "$rel_file" "-" "Data flow chain — file reads secrets/env, encodes data, AND sends network requests"
+  fi
+done < <(find "$SKILL_DIR" -type f \( -name "*.js" -o -name "*.ts" -o -name "*.py" \) 2>/dev/null || true)
+
+# 24. Time bomb detection
+while IFS=: read -r file line content; do
+  rel_file="${file#$SKILL_DIR/}"
+  add_finding "CRITICAL" "$rel_file" "$line" "Time bomb pattern — delayed or date-gated execution: ${content:0:120}"
+done < <(grep -rnE '(Date\.now\(\)\s*>\s*[0-9]{12,}|new\s+Date\s*\(\s*['"'"'"][0-9]{4}-[0-9]{2}-[0-9]{2}|setTimeout\s*\([^,]+,\s*[0-9]{8,}|setInterval\s*\([^,]+,\s*[0-9]{8,}|time\.sleep\s*\(\s*[0-9]{5,}|datetime\.now\(\)\s*>|schedule\.every\s*\(\s*[0-9]+\s*\)\s*\.days)' "$SKILL_DIR" --include='*.js' --include='*.ts' --include='*.py' --include='*.sh' 2>/dev/null || true)
+
 # --- WARNING CHECKS ---
 
 # Subprocess execution

@@ -7,7 +7,7 @@ description: "Security scanner for ClawHub/community skills — detects malware,
 
 Anyone can publish a skill to ClawHub. That's what makes it powerful — and risky. A single malicious skill can steal your API keys, exfiltrate your environment variables, inject prompts into your agent, or open a reverse shell on your machine.
 
-Skillvet scans skills **before** you use them. It runs 21 critical checks and 8 warning checks against every file in a skill directory, looking for credential theft, data exfiltration, prompt injection, obfuscation, and more. No dependencies — just bash and grep.
+Skillvet scans skills **before** you use them. It runs 24 critical checks and 8 warning checks against every file in a skill directory, looking for credential theft, data exfiltration, prompt injection, obfuscation, and more. No dependencies — just bash and grep.
 
 ## Usage
 
@@ -82,6 +82,9 @@ for d in skills/*/; do bash skills/skillvet/scripts/skill-audit.sh --summary "$d
 | Double-encoded paths | %25-based percent-encoding bypass attempts |
 | Shortened URLs | bit.ly, t.co, tinyurl, etc. in code — hides true destination |
 | Insecure pipe-to-shell | HTTP (no TLS) piped to a shell interpreter |
+| String construction evasion | Building dangerous calls from fragments (`'ev'+'al'`, bracket notation, `String.fromCharCode`, `getattr`) |
+| Data flow chain analysis | Same file reads secrets/env, encodes data, AND sends network requests — exfiltration pipeline |
+| Time bomb detection | Date-gated or long-delayed execution (`Date.now() > epoch`, `setTimeout` with 8+ digit delay, `schedule.every().days`) |
 
 ### Warnings — flagged for manual review
 
