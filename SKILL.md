@@ -7,7 +7,7 @@ description: "Security scanner for ClawHub/community skills — detects malware,
 
 Anyone can publish a skill to ClawHub. That's what makes it powerful — and risky. A single malicious skill can steal your API keys, exfiltrate your environment variables, inject prompts into your agent, or open a reverse shell on your machine.
 
-Skillvet scans skills **before** you use them. It runs 17 critical checks and 6 warning checks against every file in a skill directory, looking for credential theft, data exfiltration, prompt injection, obfuscation, and more. No dependencies — just bash and grep.
+Skillvet scans skills **before** you use them. It runs 21 critical checks and 8 warning checks against every file in a skill directory, looking for credential theft, data exfiltration, prompt injection, obfuscation, and more. No dependencies — just bash and grep.
 
 ## Usage
 
@@ -54,6 +54,10 @@ Exit codes: `0` clean, `1` warnings only, `2` critical findings (blocked).
 | Shipped .env files | Actual .env files (not .example) included in the skill |
 | Homograph characters | Cyrillic letters mimicking Latin (e.g., Cyrillic `a` posing as Latin `a` in URLs) |
 | ANSI escape injection | Raw terminal escape sequences in markdown, JSON, or YAML files |
+| Punycode domains | xn-- encoded IDN labels that may hide homograph attacks |
+| Double-encoded paths | %25-based percent-encoding bypass attempts |
+| Shortened URLs | bit.ly, t.co, tinyurl, etc. in code — hides true destination |
+| Insecure pipe-to-shell | HTTP (no TLS) piped to a shell interpreter |
 
 ### Warnings — flagged for manual review
 
@@ -65,6 +69,8 @@ Exit codes: `0` clean, `1` warnings only, `2` critical findings (blocked).
 | File write operations | Code that writes to the filesystem |
 | Unknown external tools | CLI tools referenced in docs that aren't on the known-safe list |
 | Insecure transport | Disabled TLS certificate verification |
+| Raw IP URLs | HTTP to non-private IPs — bypasses DNS, harder to trace |
+| Untrusted Docker registries | Docker pull/run from third-party registries |
 
 ## Limitations
 

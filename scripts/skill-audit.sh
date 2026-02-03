@@ -183,6 +183,30 @@ while IFS= read -r file; do
   fi
 done < <(find "$SKILL_DIR" -type f \( -name "*.md" -o -name "*.txt" -o -name "*.json" -o -name "*.yaml" -o -name "*.yml" -o -name "*.toml" \) 2>/dev/null || true)
 
+# 18. Punycode domains (IDN encoded)
+while IFS=: read -r file line content; do
+  rel_file="${file#$SKILL_DIR/}"
+  add_finding "CRITICAL" "$rel_file" "$line" "Punycode domain — possible IDN homograph attack: ${content:0:120}"
+done < <(grep -rnE 'xn--[a-z0-9]+' "$SKILL_DIR" --include='*.js' --include='*.ts' --include='*.py' --include='*.sh' --include='*.md' 2>/dev/null || true)
+
+# 19. Double-encoded paths (percent-encoding bypass)
+while IFS=: read -r file line content; do
+  rel_file="${file#$SKILL_DIR/}"
+  add_finding "CRITICAL" "$rel_file" "$line" "Double-encoded path — percent-encoding bypass attempt: ${content:0:120}"
+done < <(grep -rnE '%25[0-9a-fA-F]{2}' "$SKILL_DIR" --include='*.js' --include='*.ts' --include='*.py' --include='*.sh' 2>/dev/null || true)
+
+# 20. Shortened URLs in code
+while IFS=: read -r file line content; do
+  rel_file="${file#$SKILL_DIR/}"
+  add_finding "CRITICAL" "$rel_file" "$line" "Shortened URL — hides true destination: ${content:0:120}"
+done < <(grep -rnE 'https?://(bit\.ly|t\.co|tinyurl\.com|goo\.gl|is\.gd|ow\.ly|rb\.gy|short\.io|cutt\.ly|tiny\.cc|buff\.ly)/' "$SKILL_DIR" --include='*.js' --include='*.ts' --include='*.py' --include='*.sh' 2>/dev/null || true)
+
+# 21. Insecure pipe-to-shell (HTTP without TLS)
+while IFS=: read -r file line content; do
+  rel_file="${file#$SKILL_DIR/}"
+  add_finding "CRITICAL" "$rel_file" "$line" "Insecure pipe-to-shell — HTTP without TLS piped to interpreter: ${content:0:120}"
+done < <(grep -rnE '(curl|wget)\s+[^|]*http://[^|]*\|\s*(bash|sh|zsh|python|node|ruby|perl)' "$SKILL_DIR" --include='*.js' --include='*.ts' --include='*.py' --include='*.sh' --include='*.md' 2>/dev/null || true)
+
 # --- WARNING CHECKS ---
 
 # Subprocess execution
@@ -226,6 +250,21 @@ while IFS=: read -r file line content; do
   rel_file="${file#$SKILL_DIR/}"
   add_finding "WARNING" "$rel_file" "$line" "Insecure transport — TLS verification disabled: ${content:0:120}"
 done < <(grep -rnE '(curl\s+.*(-k|--insecure)\b|wget\s+.*--no-check-certificate|NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*.0.|verify\s*=\s*False)' "$SKILL_DIR" --include='*.js' --include='*.ts' --include='*.py' --include='*.sh' 2>/dev/null || true)
+
+# Raw IP URLs (HTTP to public IPs)
+while IFS=: read -r file line content; do
+  rel_file="${file#$SKILL_DIR/}"
+  if echo "$content" | grep -qE 'https?://(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|0\.0\.0\.0|localhost)'; then
+    continue
+  fi
+  add_finding "WARNING" "$rel_file" "$line" "Raw IP URL — bypasses DNS, harder to trace: ${content:0:120}"
+done < <(grep -rnE 'https?://[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' "$SKILL_DIR" --include='*.js' --include='*.ts' --include='*.py' --include='*.sh' 2>/dev/null || true)
+
+# Untrusted Docker registries
+while IFS=: read -r file line content; do
+  rel_file="${file#$SKILL_DIR/}"
+  add_finding "WARNING" "$rel_file" "$line" "Third-party Docker registry: ${content:0:120}"
+done < <(grep -rnE '(docker\s+(pull|run)\s+[a-z0-9.-]+\.[a-z]{2,}/|FROM\s+[a-z0-9.-]+\.[a-z]{2,}/)' "$SKILL_DIR" --include='*.js' --include='*.ts' --include='*.py' --include='*.sh' --include='Dockerfile*' --include='*.yaml' --include='*.yml' 2>/dev/null || true)
 
 # --- RESULTS ---
 echo ""
