@@ -116,7 +116,7 @@ run_test "trigger-credential-access (exit 2, check #3)" \
   "foreign credentials" \
   ""
 
-# --- ClawHavoc-inspired checks ---
+# --- Campaign-inspired checks ---
 
 # Check #25 — IOC blocklist
 run_test "trigger-ioc-blocklist (exit 2, check #25)" \

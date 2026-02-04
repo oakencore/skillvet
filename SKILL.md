@@ -1,11 +1,11 @@
 ---
 name: skillvet
-description: Security scanner for ClawHub/community skills — detects malware, credential theft, exfiltration, prompt injection, obfuscation, homograph attacks, ANSI injection, ClawHavoc campaign patterns, and more before you install. Use when installing skills from ClawHub or any public marketplace, reviewing third-party agent skills for safety, or vetting untrusted code before giving it to your AI agent. Triggers: install skill, audit skill, check skill, vet skill, skill security, safe install, is this skill safe.
+description: Security scanner for ClawHub/community skills — detects malware, credential theft, exfiltration, prompt injection, obfuscation, homograph attacks, ANSI injection, campaign-specific attack patterns, and more before you install. Use when installing skills from ClawHub or any public marketplace, reviewing third-party agent skills for safety, or vetting untrusted code before giving it to your AI agent. Triggers: install skill, audit skill, check skill, vet skill, skill security, safe install, is this skill safe.
 ---
 
 # Skillvet
 
-Security scanner for agent skills. 34 critical checks, 8 warning checks. No dependencies — just bash and grep. Includes Tirith-inspired detection patterns and ClawHavoc campaign signatures from [Koi Security research](https://www.koi.ai/blog/clawhavoc-341-malicious-clawedbot-skills-found-by-the-bot-they-were-targeting).
+Security scanner for agent skills. 34 critical checks, 8 warning checks. No dependencies — just bash and grep. Includes Tirith-inspired detection patterns and campaign signatures from [Koi Security research](https://www.koi.ai/blog/clawhavoc-341-malicious-clawedbot-skills-found-by-the-bot-they-were-targeting).
 
 ## Usage
 
@@ -72,26 +72,26 @@ Exit codes: `0` clean, `1` warnings only, `2` critical findings.
 | 23 | Data flow chain analysis | Same file reads secrets, encodes, AND sends network requests |
 | 24 | Time bomb detection | `Date.now() > timestamp`, `setTimeout(fn, 86400000)` |
 
-### ClawHavoc Campaign Checks (25-34)
+### Campaign-Inspired Checks (25-34)
 
-Inspired by [Koi Security's ClawHavoc research](https://www.koi.ai/blog/clawhavoc-341-malicious-clawedbot-skills-found-by-the-bot-they-were-targeting) which found 341 malicious skills on ClawHub.
+Inspired by [Koi Security research](https://www.koi.ai/blog/clawhavoc-341-malicious-clawedbot-skills-found-by-the-bot-they-were-targeting) which found 341 malicious skills on ClawHub.
 
 | # | Check | Example |
 |---|-------|---------|
-| 25 | Known C2/IOC IP blocklist | 91.92.242.30, 54.91.154.110 (ClawHavoc/AMOS C2 servers) |
+| 25 | Known C2/IOC IP blocklist | 91.92.242.30, 54.91.154.110 (known AMOS C2 servers) |
 | 26 | Password-protected archives | "extract using password: openclaw" — AV evasion |
 | 27 | Paste service payloads | glot.io, pastebin.com hosting malicious scripts |
 | 28 | GitHub releases binary downloads | Fake prerequisites pointing to `.zip`/`.exe` on GitHub |
 | 29 | Base64 pipe-to-interpreter | `echo '...' \| base64 -D \| bash` — primary macOS vector |
 | 30 | Subprocess + network commands | `os.system("curl ...")` — hidden pipe-to-shell in code |
-| 31 | Fake URL misdirection | `echo "https://apple.com/setup"` decoy before real payload |
+| 31 | Fake URL misdirection *(warning)* | `echo "https://apple.com/setup"` decoy before real payload |
 | 32 | Process persistence + network | `nohup curl ... &` — backdoor with network access |
 | 33 | Fake prerequisite pattern | "Prerequisites" section with sketchy external downloads |
 | 34 | xattr/chmod dropper | macOS Gatekeeper bypass: download → `xattr -c` → `chmod +x` → execute |
 
 ### Severity Changes (v0.5.0)
 
-- **Raw IP URLs** upgraded from WARNING → **CRITICAL** (every ClawHavoc C2 used raw IPs)
+- **Raw IP URLs** upgraded from WARNING → **CRITICAL** (malicious C2s commonly use raw IPs)
 - **Pipe-to-shell** now catches both HTTP and HTTPS (not just insecure HTTP)
 
 ## Warning Checks (flagged for review)
@@ -113,7 +113,7 @@ If the [tirith](https://github.com/sheeki03/tirith) binary is available on PATH,
 ## IOC Updates
 
 The C2 IP blocklist in check #25 is based on known indicators from:
-- [Koi Security ClawHavoc report](https://www.koi.ai/blog/clawhavoc-341-malicious-clawedbot-skills-found-by-the-bot-they-were-targeting) (Feb 2026)
+- [Koi Security report](https://www.koi.ai/blog/clawhavoc-341-malicious-clawedbot-skills-found-by-the-bot-they-were-targeting) (Feb 2026)
 - [The Hacker News coverage](https://thehackernews.com/2026/02/researchers-find-341-malicious-clawhub.html)
 - [OpenSourceMalware analysis](https://opensourcemalware.com/blog/clawdbot-skills-ganked-your-crypto)
 
