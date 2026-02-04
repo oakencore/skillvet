@@ -227,11 +227,11 @@ while IFS=: read -r file line content; do
   add_finding "CRITICAL" "$rel_file" "$line" "Shortened URL — hides true destination: ${content:0:120}"
 done < <(grep -rnE 'https?://(bit\.ly|t\.co|tinyurl\.com|goo\.gl|is\.gd|ow\.ly|rb\.gy|short\.io|cutt\.ly|tiny\.cc|buff\.ly)/' "$SKILL_DIR" --include='*.js' --include='*.ts' --include='*.py' --include='*.sh' 2>/dev/null || true)
 
-# 21. Insecure pipe-to-shell (HTTP without TLS)
+# 21. Pipe-to-shell (any protocol — HTTP and HTTPS both dangerous)
 while IFS=: read -r file line content; do
   rel_file="${file#$SKILL_DIR/}"
-  add_finding "CRITICAL" "$rel_file" "$line" "Insecure pipe-to-shell — HTTP without TLS piped to interpreter: ${content:0:120}"
-done < <(grep -rnE '(curl|wget)\s+[^|]*http://[^|]*\|\s*(bash|sh|zsh|python|node|ruby|perl)' "$SKILL_DIR" --include='*.js' --include='*.ts' --include='*.py' --include='*.sh' --include='*.md' 2>/dev/null || true)
+  add_finding "CRITICAL" "$rel_file" "$line" "Pipe-to-shell — remote code piped to interpreter: ${content:0:120}"
+done < <(grep -rnE '(curl|wget)\s+[^|]*https?://[^|]*\|\s*(bash|sh|zsh|python|node|ruby|perl)' "$SKILL_DIR" --include='*.js' --include='*.ts' --include='*.py' --include='*.sh' --include='*.md' 2>/dev/null || true)
 
 # 22. String construction evasion
 while IFS=: read -r file line content; do
@@ -258,6 +258,89 @@ while IFS=: read -r file line content; do
   rel_file="${file#$SKILL_DIR/}"
   add_finding "CRITICAL" "$rel_file" "$line" "Time bomb pattern — delayed or date-gated execution: ${content:0:120}"
 done < <(grep -rnE '(Date\.now\(\)\s*>\s*[0-9]{12,}|new\s+Date\s*\(\s*['"'"'"][0-9]{4}-[0-9]{2}-[0-9]{2}|setTimeout\s*\([^,]+,\s*[0-9]{8,}|setInterval\s*\([^,]+,\s*[0-9]{8,}|time\.sleep\s*\(\s*[0-9]{5,}|datetime\.now\(\)\s*>|schedule\.every\s*\(\s*[0-9]+\s*\)\s*\.days)' "$SKILL_DIR" --include='*.js' --include='*.ts' --include='*.py' --include='*.sh' 2>/dev/null || true)
+
+# --- CAMPAIGN-INSPIRED CHECKS ---
+
+# 25. Known C2/IOC IP blocklist (from Koi Security research + community reports)
+KNOWN_BAD_IPS="91\.92\.242\.30|95\.92\.242\.30|96\.92\.242\.30|202\.161\.50\.59|54\.91\.154\.110"
+while IFS=: read -r file line content; do
+  rel_file="${file#$SKILL_DIR/}"
+  matched_ip=$(echo "$content" | grep -oE "$KNOWN_BAD_IPS")
+  add_finding "CRITICAL" "$rel_file" "$line" "Known malicious C2 IP ($matched_ip) — matches IOC blocklist: ${content:0:120}"
+done < <(grep -rnE "$KNOWN_BAD_IPS" "$SKILL_DIR" 2>/dev/null || true)
+
+# 26. Password-protected archive references (AV evasion technique)
+while IFS=: read -r file line content; do
+  rel_file="${file#$SKILL_DIR/}"
+  add_finding "CRITICAL" "$rel_file" "$line" "Password-protected archive — AV evasion technique: ${content:0:120}"
+done < <(grep -rniE '(extract.*(using|with)\s*(pass(word)?|pwd)|password[:\s]+.*(openclaw|extract|unzip|archive)|\.zip.*pass(word)?|pass(word)?.*\.zip|\.7z.*pass|\.rar.*pass)' "$SKILL_DIR" --include='*.md' --include='*.txt' --include='*.yaml' --include='*.yml' 2>/dev/null || true)
+
+# 27. Paste service payloads (used to host malicious scripts)
+while IFS=: read -r file line content; do
+  rel_file="${file#$SKILL_DIR/}"
+  add_finding "CRITICAL" "$rel_file" "$line" "Paste service reference — commonly used to host malicious payloads: ${content:0:120}"
+done < <(grep -rnE 'https?://(glot\.io|pastebin\.com|paste\.ee|hastebin\.com|ghostbin\.|privatebin\.|dpaste\.|controlc\.com|rentry\.(co|org)|paste\.mozilla\.org|ix\.io|sprunge\.us|cl1p\.net)' "$SKILL_DIR" --include='*.js' --include='*.ts' --include='*.py' --include='*.sh' --include='*.md' 2>/dev/null || true)
+
+# 28. GitHub releases binary downloads in docs (fake prerequisite pattern)
+while IFS=: read -r file line content; do
+  rel_file="${file#$SKILL_DIR/}"
+  add_finding "CRITICAL" "$rel_file" "$line" "GitHub releases binary download — fake prerequisite pattern: ${content:0:120}"
+done < <(grep -rnE 'github\.com/[^/]+/[^/]+/releases/download/[^"'"'"')]*\.(zip|exe|dmg|pkg|msi|deb|rpm|appimage|tar\.gz|bin)' "$SKILL_DIR" --include='*.md' --include='*.txt' 2>/dev/null || true)
+
+# 29. Base64 pipe-to-interpreter (primary macOS attack vector)
+while IFS=: read -r file line content; do
+  rel_file="${file#$SKILL_DIR/}"
+  add_finding "CRITICAL" "$rel_file" "$line" "Base64 pipe-to-interpreter — encoded payload execution: ${content:0:120}"
+done < <(grep -rnE '(base64\s+(-d|-D|--decode)\s*\|\s*(bash|sh|zsh|python|node)|echo\s+.*\|\s*base64\s+(-d|-D|--decode)\s*\|\s*(bash|sh|zsh)|base64\s+(-d|-D)\s*\|\s*(bash|sh))' "$SKILL_DIR" 2>/dev/null || true)
+
+# 30. Subprocess executing network commands (os.system("curl...") — hidden pipe-to-shell)
+while IFS=: read -r file line content; do
+  rel_file="${file#$SKILL_DIR/}"
+  add_finding "CRITICAL" "$rel_file" "$line" "Subprocess with network command — hidden pipe-to-shell: ${content:0:120}"
+done < <(grep -rnE '(os\.system\s*\(\s*[\"'"'"'"].*(curl|wget|nc |ncat |bash -c)|os\.popen\s*\(\s*[\"'"'"'"].*(curl|wget|nc )|subprocess\.(call|run|Popen)\s*\(.*[\"'"'"'"].*(curl|wget)|exec\s*\(\s*[\"'"'"'"].*(curl|wget))' "$SKILL_DIR" --include='*.py' --include='*.js' --include='*.ts' 2>/dev/null || true)
+
+# 31. Fake URL misdirection (echo official-looking URL as decoy before real payload)
+while IFS=: read -r file line content; do
+  rel_file="${file#$SKILL_DIR/}"
+  add_finding "WARNING" "$rel_file" "$line" "Fake URL misdirection — decoy URL before real payload: ${content:0:120}"
+done < <(grep -rnE 'echo\s+[\"'"'"'"].*https?://.*(apple\.com|microsoft\.com|google\.com|setup|install|download|update|cdn\.)' "$SKILL_DIR" --include='*.sh' --include='*.md' --include='*.py' 2>/dev/null || true)
+
+# 32. Process persistence mechanisms (combined with network indicators)
+while IFS= read -r file; do
+  rel_file="${file#$SKILL_DIR/}"
+  has_persist=0
+  has_network=0
+  grep -qE '(nohup|disown|setsid|&\s*>/dev/null|start-stop-daemon|launchctl|systemctl.*(enable|start))' "$file" 2>/dev/null && has_persist=1
+  grep -qE '(curl|wget|nc |ncat|fetch\(|requests\.|http\.|socket\.)' "$file" 2>/dev/null && has_network=1
+  if [ $has_persist -eq 1 ] && [ $has_network -eq 1 ]; then
+    add_finding "CRITICAL" "$rel_file" "-" "Process persistence + network — background process with network access (backdoor pattern)"
+  fi
+done < <(find "$SKILL_DIR" -type f \( -name "*.sh" -o -name "*.py" -o -name "*.js" -o -name "*.ts" \) 2>/dev/null || true)
+
+# 33. Fake prerequisite with external download (social engineering pattern)
+if [ -f "$SKILL_DIR/SKILL.md" ]; then
+  while IFS=: read -r file line content; do
+    rel_file="${file#$SKILL_DIR/}"
+    add_finding "CRITICAL" "$rel_file" "$line" "Fake prerequisite — external download requirement in docs: ${content:0:120}"
+  done < <(grep -niE '(prerequisite|require[sd]?|must install|needed|before (you|using|proceed)).*https?://' "$SKILL_DIR/SKILL.md" 2>/dev/null | grep -viE '(npm|pip|brew|apt|cargo|node|python|docker|git|ffmpeg|clawhub\.ai|github\.com/(openclaw|anthropic|google))' || true)
+fi
+
+# 34. xattr/chmod on downloaded files (AMOS dropper pattern)
+while IFS=: read -r file line content; do
+  rel_file="${file#$SKILL_DIR/}"
+  add_finding "CRITICAL" "$rel_file" "$line" "Download + xattr/chmod — macOS Gatekeeper bypass (AMOS pattern): ${content:0:120}"
+done < <(grep -rnE '(xattr\s+-[crd]|chmod\s+\+x).*(curl|wget|\$TMPDIR|/tmp/)' "$SKILL_DIR" --include='*.sh' --include='*.py' --include='*.md' 2>/dev/null || true)
+# Also check the reverse: download then xattr
+while IFS= read -r file; do
+  rel_file="${file#$SKILL_DIR/}"
+  has_download=0
+  has_xattr=0
+  grep -qE '(curl|wget).*https?://' "$file" 2>/dev/null && has_download=1
+  grep -qE '(xattr\s+-[crd]|chmod\s+\+x)' "$file" 2>/dev/null && has_xattr=1
+  if [ $has_download -eq 1 ] && [ $has_xattr -eq 1 ]; then
+    add_finding "CRITICAL" "$rel_file" "-" "Download + Gatekeeper bypass — curl/wget followed by xattr -c / chmod +x"
+  fi
+done < <(find "$SKILL_DIR" -type f \( -name "*.sh" -o -name "*.py" -o -name "*.md" \) 2>/dev/null || true)
 
 # --- WARNING CHECKS ---
 
@@ -303,14 +386,14 @@ while IFS=: read -r file line content; do
   add_finding "WARNING" "$rel_file" "$line" "Insecure transport — TLS verification disabled: ${content:0:120}"
 done < <(grep -rnE '(curl\s+.*(-k|--insecure)\b|wget\s+.*--no-check-certificate|NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*.0.|verify\s*=\s*False)' "$SKILL_DIR" --include='*.js' --include='*.ts' --include='*.py' --include='*.sh' 2>/dev/null || true)
 
-# Raw IP URLs (HTTP to public IPs)
+# Raw IP URLs — CRITICAL for public IPs (malicious C2s commonly use raw IPs)
 while IFS=: read -r file line content; do
   rel_file="${file#$SKILL_DIR/}"
   if echo "$content" | grep -qE 'https?://(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|0\.0\.0\.0|localhost)'; then
     continue
   fi
-  add_finding "WARNING" "$rel_file" "$line" "Raw IP URL — bypasses DNS, harder to trace: ${content:0:120}"
-done < <(grep -rnE 'https?://[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' "$SKILL_DIR" --include='*.js' --include='*.ts' --include='*.py' --include='*.sh' 2>/dev/null || true)
+  add_finding "CRITICAL" "$rel_file" "$line" "Raw IP URL — bypasses domain-based trust: ${content:0:120}"
+done < <(grep -rnE 'https?://[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' "$SKILL_DIR" --include='*.js' --include='*.ts' --include='*.py' --include='*.sh' --include='*.md' 2>/dev/null || true)
 
 # Untrusted Docker registries
 while IFS=: read -r file line content; do
