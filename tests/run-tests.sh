@@ -116,6 +116,68 @@ run_test "trigger-credential-access (exit 2, check #3)" \
   "foreign credentials" \
   ""
 
+# --- ClawHavoc-inspired checks ---
+
+# Check #25 — IOC blocklist
+run_test "trigger-ioc-blocklist (exit 2, check #25)" \
+  "$FIXTURES/trigger-ioc-blocklist" 2 \
+  "malicious C2 IP" \
+  ""
+
+# Check #26 — password-protected archive
+run_test "trigger-password-archive (exit 2, check #26)" \
+  "$FIXTURES/trigger-password-archive" 2 \
+  "password.*archive" \
+  ""
+
+# Check #27 — paste service
+run_test "trigger-paste-service (exit 2, check #27)" \
+  "$FIXTURES/trigger-paste-service" 2 \
+  "paste service" \
+  ""
+
+# Check #28 — GitHub releases binary
+run_test "trigger-github-releases (exit 2, check #28)" \
+  "$FIXTURES/trigger-github-releases" 2 \
+  "GitHub releases binary" \
+  ""
+
+# Check #29 — base64 pipe-to-interpreter
+run_test "trigger-base64-pipe (exit 2, check #29)" \
+  "$FIXTURES/trigger-base64-pipe" 2 \
+  "base64 pipe" \
+  ""
+
+# Check #30 — subprocess + network command
+run_test "trigger-subprocess-network (exit 2, check #30)" \
+  "$FIXTURES/trigger-subprocess-network" 2 \
+  "subprocess.*network" \
+  ""
+
+# Check #31 — fake URL misdirection
+run_test "trigger-fake-url-misdirect (exit 2, check #31)" \
+  "$FIXTURES/trigger-fake-url-misdirect" 2 \
+  "fake URL misdirection|decoy URL" \
+  ""
+
+# Check #32 — process persistence + network
+run_test "trigger-persistence-network (exit 2, check #32)" \
+  "$FIXTURES/trigger-persistence-network" 2 \
+  "persistence.*network|backdoor" \
+  ""
+
+# Check #33 — fake prerequisite
+run_test "trigger-fake-prerequisite (exit 2, check #33)" \
+  "$FIXTURES/trigger-fake-prerequisite" 2 \
+  "fake prerequisite|external download" \
+  ""
+
+# Check #34 — xattr/chmod dropper
+run_test "trigger-xattr-dropper (exit 2, check #34)" \
+  "$FIXTURES/trigger-xattr-dropper" 2 \
+  "gatekeeper|xattr|chmod" \
+  ""
+
 # False positive — educational prompt injection context
 run_test "false-positive-prompt-injection (exit 0)" \
   "$FIXTURES/false-positive-prompt-injection" 0 \
