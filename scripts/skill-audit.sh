@@ -135,7 +135,9 @@ if [ -z "$OWN_KEYS" ]; then
   OWN_KEYS=$(grep -roE '[A-Z][A-Z_]*_KEY' "$SKILL_DIR"/*.md 2>/dev/null | grep -oE '[A-Z][A-Z_]*_KEY' | sort -u | tr '\n' '|' | sed 's/|$//')
 fi
 
-FOREIGN_KEYS="ANTHROPIC_API_KEY|OPENAI_API_KEY|OPENROUTER_API_KEY|TELEGRAM.*BOT_TOKEN|CLAUDE.*TOKEN|ELEVENLABS.*KEY|AGENTMAIL_API_KEY|FIRECRAWL_API_KEY|BROWSER_USE_API_KEY|MEM0_API_KEY|SERPAPI_KEY|GOOGLE_API_KEY"
+# Foreign keys = OpenClaw/agent-specific credentials that skills shouldn't access
+# Excludes third-party APIs (SERPAPI, etc.) that skills legitimately use
+FOREIGN_KEYS="ANTHROPIC_API_KEY|OPENAI_API_KEY|OPENROUTER_API_KEY|TELEGRAM.*BOT_TOKEN|CLAUDE.*TOKEN|ELEVENLABS.*KEY|AGENTMAIL_API_KEY|FIRECRAWL_API_KEY|BROWSER_USE_API_KEY|MEM0_API_KEY|GOOGLE_API_KEY|CLAWDHUB_TOKEN|OPENCLAW.*KEY|CLAWD.*KEY"
 while IFS=: read -r file line content; do
   rel_file="${file#$SKILL_DIR/}"
   [[ "$rel_file" == *.md ]] && continue
