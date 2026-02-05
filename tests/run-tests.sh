@@ -178,6 +178,26 @@ run_test "trigger-xattr-dropper (exit 2, check #34)" \
   "gatekeeper|xattr|chmod" \
   ""
 
+# --- 1Password blog-inspired checks ---
+
+# Check #35 — ClickFix download+execute chain
+run_test "trigger-clickfix-chain (exit 2, check #35)" \
+  "$FIXTURES/trigger-clickfix-chain" 2 \
+  "clickfix|download.*execute" \
+  ""
+
+# Check #36 — suspicious package sources
+run_test "trigger-suspicious-package (exit 2, check #36)" \
+  "$FIXTURES/trigger-suspicious-package" 2 \
+  "suspicious.*package|official registry" \
+  ""
+
+# Check #37 — staged installer pattern
+run_test "trigger-staged-installer (exit 2, check #37)" \
+  "$FIXTURES/trigger-staged-installer" 2 \
+  "suspicious.*dependency|core.*base.*lib" \
+  ""
+
 # False positive — educational prompt injection context
 run_test "false-positive-prompt-injection (exit 0)" \
   "$FIXTURES/false-positive-prompt-injection" 0 \

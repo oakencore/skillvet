@@ -342,6 +342,28 @@ while IFS= read -r file; do
   fi
 done < <(find "$SKILL_DIR" -type f \( -name "*.sh" -o -name "*.py" -o -name "*.md" \) 2>/dev/null || true)
 
+# --- 1PASSWORD BLOG-INSPIRED CHECKS ---
+
+# 35. Binary download + execute chain (ClickFix pattern - catches open -a and chained commands)
+while IFS=: read -r file line content; do
+  rel_file="${file#$SKILL_DIR/}"
+  add_finding "CRITICAL" "$rel_file" "$line" "Binary download+execute chain — ClickFix-style attack: ${content:0:120}"
+done < <(grep -rnE '(chmod\s+\+x.*&&.*\./|curl.*-o\s+\S+.*&&.*chmod|wget.*&&.*chmod\s+\+x|open\s+-a\s+.*(curl|wget|/tmp/|/var/|Downloads))' "$SKILL_DIR" --include='*.js' --include='*.ts' --include='*.py' --include='*.sh' --include='*.md' 2>/dev/null || true)
+
+# 36. Suspicious package install sources (non-official registries)
+while IFS=: read -r file line content; do
+  rel_file="${file#$SKILL_DIR/}"
+  add_finding "CRITICAL" "$rel_file" "$line" "Suspicious package source — not from official registry: ${content:0:120}"
+done < <(grep -rnE '(npm\s+install\s+.*(https?://|git\+|github:|gitlab:|--registry)|pip\s+install\s+.*(https?://|git\+|--index-url)|gem\s+install\s+.*--source)' "$SKILL_DIR" --include='*.js' --include='*.ts' --include='*.py' --include='*.sh' --include='*.md' 2>/dev/null || true)
+
+# 37. Staged installer pattern (fake dependency names like "openclaw-core")
+if [ -f "$SKILL_DIR/SKILL.md" ]; then
+  while IFS=: read -r file line content; do
+    rel_file="${file#$SKILL_DIR/}"
+    add_finding "CRITICAL" "$rel_file" "$line" "Suspicious dependency — unknown package with 'core'/'base'/'lib' suffix: ${content:0:120}"
+  done < <(grep -nE '(npm\s+install|pip\s+install|gem\s+install)\s+[a-z]+-?(core|base|lib|helper|util|sdk)\b' "$SKILL_DIR/SKILL.md" 2>/dev/null | grep -vE '(react-core|vue-core|angular-core|webpack-core|babel-core|eslint-core|typescript-core)' || true)
+fi
+
 # --- WARNING CHECKS ---
 
 # Subprocess execution
