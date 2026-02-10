@@ -115,8 +115,8 @@ fi
 # 1. Known exfiltration endpoints
 while IFS=: read -r file line content; do
   rel_file="${file#$SKILL_DIR/}"
-  if echo "$content" | grep -qiE '(webhook\.site|ngrok\.io|pipedream|requestbin|burpcollaborator|interact\.sh|oastify)'; then
-    add_finding "CRITICAL" "$rel_file" "$line" "Known exfiltration endpoint: $(echo "$content" | grep -oiE '(webhook\.site|ngrok\.io|pipedream|requestbin|burpcollaborator|interact\.sh|oastify)[^ "]*')"
+  if echo "$content" | grep -qiE '(webhook\.site|ngrok\.io|pipedream|requestbin|burpcollaborator|interact\.sh|oastify|socifiapp\.com|hookbin\.com|postb\.in|webhook\.online)'; then
+    add_finding "CRITICAL" "$rel_file" "$line" "Known exfiltration endpoint: $(echo "$content" | grep -oiE '(webhook\.site|ngrok\.io|pipedream|requestbin|burpcollaborator|interact\.sh|oastify|socifiapp\.com|hookbin\.com|postb\.in|webhook\.online)[^ "]*')"
   fi
 done < <(grep -rnE 'https?://' "$SKILL_DIR" --include='*.js' --include='*.ts' --include='*.py' --include='*.sh' 2>/dev/null || true)
 
@@ -301,8 +301,8 @@ done < <(grep -rnE '(Date\.now\(\)\s*>\s*[0-9]{12,}|new\s+Date\s*\(\s*['"'"'"][0
 
 # --- CAMPAIGN-INSPIRED CHECKS ---
 
-# 25. Known C2/IOC IP blocklist
-KNOWN_BAD_IPS="91\.92\.242\.30|95\.92\.242\.30|96\.92\.242\.30|202\.161\.50\.59|54\.91\.154\.110"
+# 25. Known C2/IOC IP blocklist (updated Feb 2026 from Bitdefender/Snyk/Koi research)
+KNOWN_BAD_IPS="91\.92\.242\.30|95\.92\.242\.30|96\.92\.242\.30|202\.161\.50\.59|54\.91\.154\.110|185\.243\.215\.[0-9]+|45\.155\.205\.[0-9]+|194\.180\.49\.[0-9]+|23\.227\.38\.[0-9]+"
 while IFS=: read -r file line content; do
   rel_file="${file#$SKILL_DIR/}"
   matched_ip=$(echo "$content" | grep -oE "$KNOWN_BAD_IPS")
@@ -389,6 +389,79 @@ if [ -f "$SKILL_DIR/SKILL.md" ]; then
     rel_file="${file#$SKILL_DIR/}"
     add_finding "CRITICAL" "$rel_file" "$line" "Suspicious dependency — unknown package with 'core'/'base'/'lib' suffix: ${content:0:120}"
   done < <(grep -nE '(npm\s+install|pip\s+install|gem\s+install)\s+[a-z]+-?(core|base|lib|helper|util|sdk)\b' "$SKILL_DIR/SKILL.md" 2>/dev/null | grep -vE '(react-core|vue-core|angular-core|webpack-core|babel-core|eslint-core|typescript-core)' || true)
+fi
+
+# 38. Fake OS update social engineering (ClawHavoc pattern)
+while IFS=: read -r file line content; do
+  rel_file="${file#$SKILL_DIR/}"
+  add_finding "CRITICAL" "$rel_file" "$line" "Fake OS update message — social engineering (ClawHavoc pattern): ${content:0:120}"
+done < <(grep -rniE '(apple\s+software\s+update|microsoft\s+update|system\s+update\s+(required|needed)|security\s+update\s+(required|needed)|update\s+your\s+(system|os|software)|verification\s+(required|needed).*install|install.*for\s+compatibility)' "$SKILL_DIR" --include='*.md' --include='*.txt' --include='*.sh' --include='*.py' 2>/dev/null || true)
+
+# 39. Known malicious ClawHub actors (from Bitdefender/Snyk/Koi research Feb 2026)
+KNOWN_BAD_ACTORS="zaycv|Ddoy233|Sakaen736jih|aslaep123|Hightower6eu|davidsmorais|clawdhub1|clawhub\b"
+while IFS=: read -r file line content; do
+  rel_file="${file#$SKILL_DIR/}"
+  matched_actor=$(echo "$content" | grep -oiE "$KNOWN_BAD_ACTORS" | head -1)
+  add_finding "CRITICAL" "$rel_file" "$line" "Reference to known malicious actor ($matched_actor) — ClawHavoc campaign: ${content:0:120}"
+done < <(grep -rniE "$KNOWN_BAD_ACTORS" "$SKILL_DIR" --include='*.md' --include='*.txt' --include='*.json' --include='*.yaml' --include='*.yml' 2>/dev/null || true)
+
+# 40. Bash reverse shell via /dev/tcp (AuthTool pattern)
+while IFS=: read -r file line content; do
+  rel_file="${file#$SKILL_DIR/}"
+  add_finding "CRITICAL" "$rel_file" "$line" "Bash reverse shell via /dev/tcp: ${content:0:120}"
+done < <(grep -rnE '(bash\s+-[ic].*>/dev/tcp|/dev/tcp/[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+|0>&1|>&\s*/dev/tcp)' "$SKILL_DIR" --include='*.sh' --include='*.py' --include='*.js' --include='*.md' 2>/dev/null || true)
+
+# 41. Nohup with network command (Hidden Backdoor pattern)
+while IFS=: read -r file line content; do
+  rel_file="${file#$SKILL_DIR/}"
+  add_finding "CRITICAL" "$rel_file" "$line" "Nohup with network command — persistent backdoor pattern: ${content:0:120}"
+done < <(grep -rnE '(nohup.*(curl|wget|nc |ncat|bash -c|/dev/tcp)|disown.*(curl|wget|bash)|setsid.*(curl|wget|bash|nc))' "$SKILL_DIR" --include='*.sh' --include='*.py' --include='*.md' 2>/dev/null || true)
+
+# 42. Python reverse shell patterns
+while IFS=: read -r file line content; do
+  rel_file="${file#$SKILL_DIR/}"
+  add_finding "CRITICAL" "$rel_file" "$line" "Python reverse shell pattern: ${content:0:120}"
+done < <(grep -rnE '(socket\.socket.*connect.*dup2|pty\.spawn.*bash|subprocess\.call.*shell=True.*socket|os\.dup2.*socket|import\s+pty|exec\s*\(.*compile\s*\(.*socket)' "$SKILL_DIR" --include='*.py' 2>/dev/null || true)
+
+# 43. Terminal output disguise (decoy message before payload)
+while IFS=: read -r file line content; do
+  rel_file="${file#$SKILL_DIR/}"
+  add_finding "WARNING" "$rel_file" "$line" "Terminal disguise — decoy message before command: ${content:0:120}"
+done < <(grep -rnE '(echo\s+[\"'"'"'].*\.(com|io|org|net).*[\"'"'"']\s*;|print\s*\([\"'"'"'].*downloading.*[\"'"'"']\s*\)|printf.*install|echo.*verification|echo.*success.*&&)' "$SKILL_DIR" --include='*.sh' --include='*.py' --include='*.md' 2>/dev/null || true)
+
+# 44. Credential harvesting via file read + network send
+while IFS=: read -r file line content; do
+  rel_file="${file#$SKILL_DIR/}"
+  add_finding "CRITICAL" "$rel_file" "$line" "Credential file access pattern: ${content:0:120}"
+done < <(grep -rnE '(open\s*\([\"'"'"'].*\.(env|key|pem|credentials|aws|ssh|config)|read.*~/\.(bash|zsh|ssh|aws|config)|cat\s+.*\.(env|pem|key|credentials))' "$SKILL_DIR" --include='*.py' --include='*.js' --include='*.ts' --include='*.sh' 2>/dev/null || true)
+
+# 45. TMPDIR payload staging (AMOS pattern)
+while IFS=: read -r file line content; do
+  rel_file="${file#$SKILL_DIR/}"
+  add_finding "CRITICAL" "$rel_file" "$line" "TMPDIR payload staging — malware drop pattern: ${content:0:120}"
+done < <(grep -rnE '(\$TMPDIR/[a-z0-9]+|/tmp/\.[a-z]|mktemp.*(curl|wget|chmod)|cd\s+/tmp\s*&&.*(curl|wget))' "$SKILL_DIR" --include='*.sh' --include='*.py' --include='*.md' 2>/dev/null || true)
+
+# 46. GitHub raw content execution
+while IFS=: read -r file line content; do
+  rel_file="${file#$SKILL_DIR/}"
+  add_finding "CRITICAL" "$rel_file" "$line" "GitHub raw content piped to interpreter: ${content:0:120}"
+done < <(grep -rnE '(raw\.githubusercontent\.com|gist\.githubusercontent\.com|github\.com/[^/]+/[^/]+/raw/).*(curl|wget).*\|.*(bash|sh|python|node)' "$SKILL_DIR" 2>/dev/null || true)
+
+# 47. Echo-encoded payload execution
+while IFS=: read -r file line content; do
+  rel_file="${file#$SKILL_DIR/}"
+  add_finding "CRITICAL" "$rel_file" "$line" "Echo-encoded payload — obfuscated execution: ${content:0:120}"
+done < <(grep -rnE "echo\s+['\"][A-Za-z0-9+/=]{40,}['\"]\s*\|\s*(base64|openssl|xxd)" "$SKILL_DIR" --include='*.sh' --include='*.md' 2>/dev/null || true)
+
+# 48. Typosquat skill name detection
+if [ -f "$SKILL_DIR/SKILL.md" ]; then
+  SKILL_YAML_NAME=$(grep -m1 '^name:' "$SKILL_DIR/SKILL.md" 2>/dev/null | sed 's/name:\s*//' | tr -d '"'"'"' ')
+  TYPOSQUAT_TARGETS="clawhub|clawdhub|openclaw|clawdbot|moltbot|skillvet|anthropic|openai|google"
+  if echo "$SKILL_YAML_NAME" | grep -qiE "^($TYPOSQUAT_TARGETS)[0-9]|^[0-9]($TYPOSQUAT_TARGETS)|($TYPOSQUAT_TARGETS)-?(cli|tool|helper|util|sdk|core|base|lib)$"; then
+    if ! echo "$SKILL_YAML_NAME" | grep -qiE "^(openclaw|clawhub|skillvet|clawdbot)$"; then
+      add_finding "CRITICAL" "SKILL.md" "1" "Typosquat skill name — mimics official tool: $SKILL_YAML_NAME"
+    fi
+  fi
 fi
 
 # --- WARNING CHECKS ---

