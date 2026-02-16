@@ -179,6 +179,7 @@ declare -A SEVERITY_WEIGHT=(
   [11]=9 [12]=6 [13]=8 [14]=7 [15]=7 [16]=6 [17]=5 [18]=6 [19]=5 [20]=4
   [21]=9 [22]=7 [23]=9 [24]=8 [25]=10 [26]=7 [27]=6 [28]=7 [29]=9 [30]=8
   [31]=3 [32]=9 [33]=7 [34]=9 [35]=9 [36]=7 [37]=6
+  [49]=9 [50]=8 [51]=9 [52]=7 [53]=9 [54]=7
   [W1]=2 [W2]=2 [W3]=2 [W4]=3 [W5]=2 [W6]=4 [W7]=3 [W8]=5
 )
 
@@ -221,6 +222,12 @@ declare -A REMEDIATION=(
   [35]="Do not chain download+chmod+execute in a single command."
   [36]="Install packages from official registries only (npmjs.com, pypi.org)."
   [37]="Use well-known packages. Avoid suspicious -core/-base/-lib suffixed names."
+  [49]="Replace Cyrillic/Greek lookalike characters in URLs with standard ASCII. This is a homograph attack."
+  [50]="Remove zero-width and bidi override Unicode characters. These hide malicious content in plain sight."
+  [51]="Replace punycode (xn--) domains with standard ASCII domains or explain their legitimate use."
+  [52]="Remove credentials from URLs. Use environment variables or config files for authentication."
+  [53]="Do not write to dotfiles (.bashrc, .ssh/authorized_keys, .gitconfig). Declare config requirements in SKILL.md."
+  [54]="Replace shortened URLs with full destination URLs so the target can be verified."
 )
 
 json_escape() {
@@ -976,6 +983,81 @@ if ! is_check_disabled 48; then
       fi
     fi
   fi
+fi
+
+# 49. Homograph URLs — Cyrillic/Greek lookalikes in hostnames (inspired by Tirith)
+if ! is_check_disabled 49; then
+  CHECKS_RUN=$((CHECKS_RUN + 1))
+  verbose "Running check #49: Homograph URL detection"
+  # Detect non-ASCII characters in URLs that look like Latin (Cyrillic а/е/о/с/р/і, Greek α/ε/ο etc.)
+  while IFS=: read -r file line content; do
+    [ -z "$file" ] && continue
+    has_ignore_comment "$content" && continue
+    rel_file="${file#$SKILL_DIR/}"
+    add_finding "CRITICAL" "$rel_file" "$line" "Homograph URL -- non-ASCII characters in hostname may be impersonating a legitimate domain: ${content:0:120}" "49"
+  done < <(grep -rnP 'https?://[^\s]*[\x{0400}-\x{04FF}\x{0370}-\x{03FF}\x{0500}-\x{052F}][^\s]*' "$SKILL_DIR" 2>/dev/null || true)
+fi
+
+# 50. Zero-width / invisible Unicode characters (inspired by Tirith)
+if ! is_check_disabled 50; then
+  CHECKS_RUN=$((CHECKS_RUN + 1))
+  verbose "Running check #50: Zero-width / invisible Unicode"
+  # Zero-width space (U+200B), zero-width joiner (U+200D), zero-width non-joiner (U+200C),
+  # word joiner (U+2060), left/right-to-left marks (U+200E/F), bidi overrides (U+202A-202E, U+2066-2069)
+  while IFS=: read -r file line content; do
+    [ -z "$file" ] && continue
+    has_ignore_comment "$content" && continue
+    rel_file="${file#$SKILL_DIR/}"
+    add_finding "CRITICAL" "$rel_file" "$line" "Invisible Unicode -- zero-width or bidi override characters that can hide malicious content: ${content:0:120}" "50"
+  done < <(grep -rnP '[\x{200B}-\x{200F}\x{202A}-\x{202E}\x{2060}-\x{2069}\x{FEFF}]' "$SKILL_DIR" --include='*.sh' --include='*.py' --include='*.js' --include='*.md' 2>/dev/null || true)
+fi
+
+# 51. Punycode domain in URLs (inspired by Tirith)
+if ! is_check_disabled 51; then
+  CHECKS_RUN=$((CHECKS_RUN + 1))
+  verbose "Running check #51: Punycode domain detection"
+  while IFS=: read -r file line content; do
+    [ -z "$file" ] && continue
+    has_ignore_comment "$content" && continue
+    rel_file="${file#$SKILL_DIR/}"
+    add_finding "CRITICAL" "$rel_file" "$line" "Punycode domain -- xn-- encoded domain may be a homograph attack: ${content:0:120}" "51"
+  done < <(grep -rnE 'https?://[^\s]*xn--[^\s]*' "$SKILL_DIR" 2>/dev/null || true)
+fi
+
+# 52. Credential in URL (user:pass@host) (inspired by Tirith)
+if ! is_check_disabled 52; then
+  CHECKS_RUN=$((CHECKS_RUN + 1))
+  verbose "Running check #52: Credentials in URL"
+  while IFS=: read -r file line content; do
+    [ -z "$file" ] && continue
+    has_ignore_comment "$content" && continue
+    rel_file="${file#$SKILL_DIR/}"
+    add_finding "CRITICAL" "$rel_file" "$line" "Credentials in URL -- http(s)://user:pass@host pattern exposes credentials or tricks URL parsers: ${content:0:120}" "52"
+  done < <(grep -rnP 'https?://[^@/\s]+:[^@/\s]+@[^\s]+' "$SKILL_DIR" --include='*.sh' --include='*.py' --include='*.js' --include='*.md' 2>/dev/null || true)
+fi
+
+# 53. Dotfile targeting — downloads aimed at shell config, SSH keys, git config (inspired by Tirith)
+if ! is_check_disabled 53; then
+  CHECKS_RUN=$((CHECKS_RUN + 1))
+  verbose "Running check #53: Dotfile targeting"
+  while IFS=: read -r file line content; do
+    [ -z "$file" ] && continue
+    has_ignore_comment "$content" && continue
+    rel_file="${file#$SKILL_DIR/}"
+    add_finding "CRITICAL" "$rel_file" "$line" "Dotfile targeting -- writes to sensitive config files (.bashrc, .ssh, .gitconfig etc.): ${content:0:120}" "53"
+  done < <(grep -rnE '(>|>>|tee|cp|mv|ln\s+-s).*(\$HOME|~)/\.(bashrc|zshrc|profile|bash_profile|ssh/(config|authorized_keys|id_)|gitconfig|npmrc|pypirc|netrc|gnupg)' "$SKILL_DIR" --include='*.sh' --include='*.py' --include='*.js' --include='*.md' 2>/dev/null || true)
+fi
+
+# 54. URL shortener hiding destination (inspired by Tirith)
+if ! is_check_disabled 54; then
+  CHECKS_RUN=$((CHECKS_RUN + 1))
+  verbose "Running check #54: URL shortener obfuscation"
+  while IFS=: read -r file line content; do
+    [ -z "$file" ] && continue
+    has_ignore_comment "$content" && continue
+    rel_file="${file#$SKILL_DIR/}"
+    add_finding "CRITICAL" "$rel_file" "$line" "URL shortener -- shortened URL hides true destination, often used in supply chain attacks: ${content:0:120}" "54"
+  done < <(grep -rnE '(curl|wget|fetch)\s.*https?://(bit\.ly|t\.co|tinyurl\.com|is\.gd|rb\.gy|shorturl\.at|cutt\.ly|ow\.ly|goo\.gl|v\.gd)/' "$SKILL_DIR" 2>/dev/null || true)
 fi
 
 # --- WARNING CHECKS ---
