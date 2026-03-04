@@ -320,6 +320,56 @@ run_test "trigger-staged-installer (exit 2, check #37)" \
   "suspicious.*dependency|core.*base.*lib" \
   ""
 
+# --- MCP Security Checks ---
+
+# Check #55 — MCP tool poisoning
+run_test "trigger-tool-poisoning (exit 2, check #55)" \
+  "$FIXTURES/trigger-tool-poisoning" 2 \
+  "tool poisoning" \
+  ""
+
+# Check #56 — MCP cross-server shadowing
+run_test "trigger-cross-server-shadow (exit 2, check #56)" \
+  "$FIXTURES/trigger-cross-server-shadow" 2 \
+  "cross-server shadowing" \
+  ""
+
+# Check #57 — MCP conversation exfiltration
+run_test "trigger-conversation-exfil (exit 2, check #57)" \
+  "$FIXTURES/trigger-conversation-exfil" 2 \
+  "conversation exfiltration" \
+  ""
+
+# Check #58 — MCP command injection
+run_test "trigger-mcp-cmd-inject (exit 2, check #58)" \
+  "$FIXTURES/trigger-mcp-cmd-inject" 2 \
+  "command injection" \
+  ""
+
+# Check #59 — MCP bulk env exfiltration
+run_test "trigger-bulk-env-exfil (exit 2, check #59)" \
+  "$FIXTURES/trigger-bulk-env-exfil" 2 \
+  "bulk env exfiltration" \
+  ""
+
+# Check #60 — Cloud metadata SSRF
+run_test "trigger-cloud-metadata-ssrf (exit 2, check #60)" \
+  "$FIXTURES/trigger-cloud-metadata-ssrf" 2 \
+  "cloud metadata SSRF" \
+  ""
+
+# Check #61 — DNS rebinding (WARNING — exit 1, not 2)
+run_test "trigger-dns-rebinding (exit 1, check #61)" \
+  "$FIXTURES/trigger-dns-rebinding" 1 \
+  "DNS rebinding" \
+  ""
+
+# Check #62 — MCP rug pull
+run_test "trigger-rug-pull (exit 2, check #62)" \
+  "$FIXTURES/trigger-rug-pull" 2 \
+  "rug pull" \
+  ""
+
 # --- False positive tests ---
 
 # False positive — educational prompt injection context
