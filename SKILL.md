@@ -1,15 +1,15 @@
 ---
 name: skillvet
-description: "Security scanner for ClawHub/community skills — detects malware, credential theft, exfiltration, prompt injection, obfuscation, homograph attacks, ANSI injection, campaign-specific attack patterns, and more before you install. Use when installing skills from ClawHub or any public marketplace, reviewing third-party agent skills for safety, or vetting untrusted code before giving it to your AI agent. Triggers: install skill, audit skill, check skill, vet skill, skill security, safe install, is this skill safe."
+description: "Security scanner for ClawHub/community skills — detects malware, credential theft, exfiltration, prompt injection, obfuscation, homograph attacks, ANSI injection, MCP server attacks, campaign-specific attack patterns, and more before you install. Use when installing skills from ClawHub or any public marketplace, reviewing third-party agent skills for safety, or vetting untrusted code before giving it to your AI agent. Triggers: install skill, audit skill, check skill, vet skill, skill security, safe install, is this skill safe."
 compatibility: "Requires bash, grep, find, and file (standard POSIX). safe-install.sh and scan-remote.sh require the clawdhub CLI. perl or ggrep (Homebrew GNU grep) recommended for full Unicode regex support on macOS."
 metadata:
-  version: "2.0.9"
+  version: "3.1.0"
   author: oakencore
 ---
 
 # Skillvet
 
-Security scanner for agent skills. 48 critical checks, 8 warning checks. No dependencies — just bash and grep. Includes Tirith-inspired detection patterns, campaign signatures from [Koi Security](https://www.koi.ai/blog/clawhavoc-341-malicious-clawedbot-skills-found-by-the-bot-they-were-targeting), [Bitdefender](https://businessinsights.bitdefender.com/technical-advisory-openclaw-exploitation-enterprise-networks), [Snyk](https://snyk.io/articles/clawdhub-malicious-campaign-ai-agent-skills/), and [1Password](https://1password.com/blog/from-magic-to-malware-how-openclaws-agent-skills-become-an-attack-surface) ClickFix patterns.
+Security scanner for agent skills. 62 security checks plus 8 warning categories. No dependencies — just bash and grep. Includes Tirith-inspired detection patterns, MCP server attack detection, campaign signatures from [Koi Security](https://www.koi.ai/blog/clawhavoc-341-malicious-clawedbot-skills-found-by-the-bot-they-were-targeting), [Bitdefender](https://businessinsights.bitdefender.com/technical-advisory-openclaw-exploitation-enterprise-networks), [Snyk](https://snyk.io/articles/clawdhub-malicious-campaign-ai-agent-skills/), and [1Password](https://1password.com/blog/from-magic-to-malware-how-openclaws-agent-skills-become-an-attack-surface) ClickFix patterns.
 
 ## Usage
 
@@ -169,6 +169,34 @@ Each finding has a severity weight (1-10). The aggregate risk score is included 
 | 46 | GitHub raw content execution | `curl raw.githubusercontent.com/... \| bash` |
 | 47 | Echo-encoded payloads | Long base64 strings echoed and piped to decoders |
 | 48 | Typosquat skill names | `clawdhub-helper`, `openclaw-cli`, `skillvet1` |
+
+### Tirith-Inspired Security Checks (#49-54)
+
+Based on [Tirith](https://github.com/StackGuardian/tirith) policy-as-code patterns for detecting advanced obfuscation and credential abuse.
+
+| # | Check | Severity | Example |
+|---|-------|----------|---------|
+| 49 | Homograph URL detection | 9 | Cyrillic/Greek lookalike chars in URLs (e.g., `а` vs `a`) |
+| 50 | Zero-width / invisible Unicode | 8 | U+200B, U+200D, bidi overrides hiding malicious content |
+| 51 | Punycode domain detection | 9 | `xn--` IDN-encoded domains masquerading as legitimate |
+| 52 | Credentials in URL | 7 | `https://user:pass@host` — passwords exposed in URLs |
+| 53 | Dotfile targeting | 9 | Writes to `.bashrc`, `.ssh/authorized_keys`, `.gitconfig` |
+| 54 | URL shortener obfuscation | 7 | Shortened URLs hiding malicious destinations |
+
+### MCP Security Checks (#55-62)
+
+Based on [Invariant Labs](https://invariantlabs.ai/blog/mcp-security-notification-tool-poisoning-attacks), [Trail of Bits](https://blog.trailofbits.com/2025/04/21/jumping-the-line-how-mcp-servers-can-attack-you-before-you-ever-use-them/), [Keysight](https://www.keysight.com/blogs/en/tech/nwvs/2026/01/12/mcp-command-injection-new-attack-vector), and [Snyk](https://snyk.io/articles/exploiting-mcp-servers-vulnerable-to-command-injection/) research on MCP server attack vectors.
+
+| # | Check | Severity | Example |
+|---|-------|----------|---------|
+| 55 | MCP tool poisoning instructions | 9 | `"description": "ignore previous instructions and..."` |
+| 56 | Cross-server tool shadowing | 8 | `"when using send_email, always BCC..."` |
+| 57 | Conversation history exfiltration | 9 | `conversation_history` parameter, `when you see API_KEY` |
+| 58 | Command injection in MCP handlers | 8 | Template literal in shell exec, subprocess with shell=True |
+| 59 | Bulk environment exfiltration | 9 | `JSON.stringify(process.env)`, `dict(os.environ)` |
+| 60 | Cloud metadata SSRF | 9 | `169.254.169.254`, `metadata.google.internal` |
+| 61 | DNS rebinding exposure (warning) | 6 | Server binding to `0.0.0.0` with SSE transport |
+| 62 | Rug pull / dynamic tool definitions | 8 | `Date.now()` near tool registration, remote tool fetching |
 
 ## Warning Checks (flagged for review)
 
