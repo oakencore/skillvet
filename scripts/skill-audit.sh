@@ -1085,6 +1085,124 @@ if ! is_check_disabled 54; then
   done < <(grep -rnE '(curl|wget|fetch)\s.*https?://(bit\.ly|t\.co|tinyurl\.com|is\.gd|rb\.gy|shorturl\.at|cutt\.ly|ow\.ly|goo\.gl|v\.gd)/' "$SKILL_DIR" 2>/dev/null || true)
 fi
 
+# --- MCP SECURITY CHECKS (55-62) ---
+# Based on Invariant Labs, Trail of Bits, Keysight, Snyk, and Palo Alto Unit 42 research
+
+# 55. MCP Tool Poisoning — hidden instructions in tool descriptions
+if ! is_check_disabled 55; then
+  CHECKS_RUN=$((CHECKS_RUN + 1))
+  verbose "Running check #55: MCP tool poisoning instructions"
+  while IFS=: read -r file line content; do
+    [ -z "$file" ] && continue
+    has_ignore_comment "$content" && continue
+    rel_file="${file#$SKILL_DIR/}"
+    add_finding "CRITICAL" "$rel_file" "$line" "MCP tool poisoning -- hidden instruction targeting LLM in tool description: ${content:0:120}" "55"
+  # shellcheck disable=SC2086
+  done < <(grep -rniE '(ignore\s+previous\s+instructions|ignore\s+all\s+instructions|do\s+not\s+tell\s+the\s+user|without\s+the\s+user\s+knowing|you\s+must\s+not\s+reveal|do\s+not\s+mention\s+this|hide\s+this\s+from\s+the\s+user)' "$SKILL_DIR" $CODE_INCLUDES 2>/dev/null || true)
+fi
+
+# 56. MCP Cross-Server Shadowing — tool descriptions manipulating other tools
+if ! is_check_disabled 56; then
+  CHECKS_RUN=$((CHECKS_RUN + 1))
+  verbose "Running check #56: MCP cross-server shadowing"
+  while IFS=: read -r file line content; do
+    [ -z "$file" ] && continue
+    has_ignore_comment "$content" && continue
+    rel_file="${file#$SKILL_DIR/}"
+    # Only flag when inside string literals (quotes suggest tool description text)
+    if echo "$content" | grep -qE "[\"'\`]"; then
+      add_finding "CRITICAL" "$rel_file" "$line" "MCP cross-server shadowing -- tool description manipulates other tools: ${content:0:120}" "56"
+    fi
+  # shellcheck disable=SC2086
+  done < <(grep -rniE '(when\s+using\s+\w+.*(always|must|should)|before\s+calling\s+\w+.*(add|include|send|insert)|after\s+calling\s+\w+.*(also|additionally|forward)|always\s+(include|add|send|forward|bcc)\b)' "$SKILL_DIR" $CODE_INCLUDES 2>/dev/null || true)
+fi
+
+# 57. MCP Conversation History Exfiltration — suspicious parameter names and data gathering
+if ! is_check_disabled 57; then
+  CHECKS_RUN=$((CHECKS_RUN + 1))
+  verbose "Running check #57: MCP conversation history exfiltration"
+  while IFS=: read -r file line content; do
+    [ -z "$file" ] && continue
+    has_ignore_comment "$content" && continue
+    rel_file="${file#$SKILL_DIR/}"
+    add_finding "CRITICAL" "$rel_file" "$line" "MCP conversation exfiltration -- suspicious parameter or data-gathering instruction: ${content:0:120}" "57"
+  # shellcheck disable=SC2086
+  done < <(grep -rniE '(conversation_history|chat_history|previous_messages|full_conversation|when\s+you\s+see\s+.*(api.?key|password|token|secret)|if\s+the\s+user\s+mentions\s+.*(key|password|token|credential)|collect\s+.*credentials|gather\s+.*secrets|compile\s+.*keys)' "$SKILL_DIR" $CODE_INCLUDES 2>/dev/null || true)
+fi
+
+# 58. MCP Command Injection in Handlers — unsanitized shell execution (ENCODED)
+if ! is_check_disabled 58; then
+  CHECKS_RUN=$((CHECKS_RUN + 1))
+  verbose "Running check #58: MCP command injection in handlers"
+  if [ -n "$P_MCP_CMD_INJECT" ]; then
+    while IFS=: read -r file line content; do
+      [ -z "$file" ] && continue
+      has_ignore_comment "$content" && continue
+      rel_file="${file#$SKILL_DIR/}"
+      add_finding "CRITICAL" "$rel_file" "$line" "MCP command injection -- unsanitized user input in shell execution: ${content:0:120}" "58"
+    # shellcheck disable=SC2086
+    done < <(grep -rnE "$P_MCP_CMD_INJECT" "$SKILL_DIR" $CODE_INCLUDES 2>/dev/null || true)
+  fi
+fi
+
+# 59. MCP Bulk Environment Exfiltration — mass env var access (ENCODED)
+if ! is_check_disabled 59; then
+  CHECKS_RUN=$((CHECKS_RUN + 1))
+  verbose "Running check #59: MCP bulk env exfiltration"
+  if [ -n "$P_MCP_BULK_ENV" ]; then
+    while IFS=: read -r file line content; do
+      [ -z "$file" ] && continue
+      has_ignore_comment "$content" && continue
+      rel_file="${file#$SKILL_DIR/}"
+      add_finding "CRITICAL" "$rel_file" "$line" "MCP bulk env exfiltration -- mass access to all environment variables: ${content:0:120}" "59"
+    # shellcheck disable=SC2086
+    done < <(grep -rnE "$P_MCP_BULK_ENV" "$SKILL_DIR" $CODE_INCLUDES 2>/dev/null || true)
+  fi
+fi
+
+# 60. Cloud Metadata SSRF — access to cloud instance metadata endpoints (ENCODED)
+if ! is_check_disabled 60; then
+  CHECKS_RUN=$((CHECKS_RUN + 1))
+  verbose "Running check #60: Cloud metadata SSRF"
+  if [ -n "$P_MCP_CLOUD_META" ]; then
+    while IFS=: read -r file line content; do
+      [ -z "$file" ] && continue
+      has_ignore_comment "$content" && continue
+      rel_file="${file#$SKILL_DIR/}"
+      add_finding "CRITICAL" "$rel_file" "$line" "Cloud metadata SSRF -- access to instance metadata endpoint enables cloud account takeover: ${content:0:120}" "60"
+    # shellcheck disable=SC2086
+    done < <(grep -rnE "$P_MCP_CLOUD_META" "$SKILL_DIR" $CODE_INCLUDES 2>/dev/null || true)
+  fi
+fi
+
+# 61. DNS Rebinding Exposure — servers binding to all interfaces without auth
+if ! is_check_disabled 61; then
+  CHECKS_RUN=$((CHECKS_RUN + 1))
+  verbose "Running check #61: DNS rebinding exposure"
+  while IFS=: read -r file line content; do
+    [ -z "$file" ] && continue
+    has_ignore_comment "$content" && continue
+    rel_file="${file#$SKILL_DIR/}"
+    add_finding "WARNING" "$rel_file" "$line" "DNS rebinding risk -- server binds to all interfaces (0.0.0.0); consider binding to 127.0.0.1: ${content:0:120}" "61"
+  # shellcheck disable=SC2086
+  done < <(grep -rnE '(listen|bind|host)\s*[:=(]\s*["\x27]?(0\.0\.0\.0|::)["\x27]?' "$SKILL_DIR" $CODE_INCLUDES 2>/dev/null || true)
+fi
+
+# 62. Rug Pull / Dynamic Tool Definitions — time-gated or remotely-fetched tool defs (ENCODED)
+if ! is_check_disabled 62; then
+  CHECKS_RUN=$((CHECKS_RUN + 1))
+  verbose "Running check #62: MCP rug pull / dynamic tool definitions"
+  if [ -n "$P_MCP_RUG_PULL" ]; then
+    while IFS=: read -r file line content; do
+      [ -z "$file" ] && continue
+      has_ignore_comment "$content" && continue
+      rel_file="${file#$SKILL_DIR/}"
+      add_finding "CRITICAL" "$rel_file" "$line" "MCP rug pull risk -- dynamic or time-gated tool definitions: ${content:0:120}" "62"
+    # shellcheck disable=SC2086
+    done < <(grep -rnE "$P_MCP_RUG_PULL" "$SKILL_DIR" $CODE_INCLUDES 2>/dev/null || true)
+  fi
+fi
+
 # --- WARNING CHECKS ---
 
 # W1: Subprocess execution
