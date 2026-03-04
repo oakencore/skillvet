@@ -41,6 +41,10 @@ P_PY_REVSHELL=$(load_pattern "PY_REVSHELL")
 P_TMPDIR_STAGE=$(load_pattern "TMPDIR_STAGE")
 P_GITHUB_RAW=$(load_pattern "GITHUB_RAW")
 P_ECHO_B64=$(load_pattern "ECHO_B64")
+P_MCP_CMD_INJECT=$(load_pattern "MCP_CMD_INJECT")
+P_MCP_BULK_ENV=$(load_pattern "MCP_BULK_ENV")
+P_MCP_CLOUD_META=$(load_pattern "MCP_CLOUD_META")
+P_MCP_RUG_PULL=$(load_pattern "MCP_RUG_PULL")
 
 # Fallbacks if patterns file missing
 [ -z "$P_REVSHELL" ] && P_REVSHELL='(mkfifo|ncat\s)'
@@ -179,7 +183,9 @@ declare -A SEVERITY_WEIGHT=(
   [11]=9 [12]=6 [13]=8 [14]=7 [15]=7 [16]=6 [17]=5 [18]=6 [19]=5 [20]=4
   [21]=9 [22]=7 [23]=9 [24]=8 [25]=10 [26]=7 [27]=6 [28]=7 [29]=9 [30]=8
   [31]=3 [32]=9 [33]=7 [34]=9 [35]=9 [36]=7 [37]=6
+  [38]=7 [39]=10 [40]=10 [41]=9 [42]=10 [43]=3 [44]=8 [45]=8 [46]=9 [47]=8 [48]=7
   [49]=9 [50]=8 [51]=9 [52]=7 [53]=9 [54]=7
+  [55]=9 [56]=8 [57]=9 [58]=8 [59]=9 [60]=9 [61]=6 [62]=8
   [W1]=2 [W2]=2 [W3]=2 [W4]=3 [W5]=2 [W6]=4 [W7]=3 [W8]=5
 )
 
@@ -228,6 +234,25 @@ declare -A REMEDIATION=(
   [52]="Remove credentials from URLs. Use environment variables or config files for authentication."
   [53]="Do not write to dotfiles (.bashrc, .ssh/authorized_keys, .gitconfig). Declare config requirements in SKILL.md."
   [54]="Replace shortened URLs with full destination URLs so the target can be verified."
+  [38]="Remove fake OS update messages. Skills should not impersonate system updates."
+  [39]="This skill references known malicious actors from the ClawHavoc campaign. Do not use."
+  [40]="Remove /dev/tcp reverse shell patterns. Skills must not open remote shell access."
+  [41]="Remove nohup/disown with network commands. Skills must not create persistent backdoors."
+  [42]="Remove Python reverse shell patterns (socket+dup2, pty.spawn). Skills must not open remote shells."
+  [43]="Remove decoy terminal messages that disguise malicious commands."
+  [44]="Do not read credential files (.env, .pem, .ssh, .aws). Declare needed env vars in SKILL.md."
+  [45]="Do not stage payloads in TMPDIR or /tmp. Use the skill's own directory for temp files."
+  [46]="Do not pipe GitHub raw content to interpreters. Download and review scripts before execution."
+  [47]="Remove echo-encoded payloads piped to base64/openssl decoders."
+  [48]="Rename this skill. Its name mimics an official tool, which is a typosquatting pattern."
+  [55]="Tool descriptions should only contain factual documentation. Remove imperative instructions targeting the LLM (e.g. 'ignore previous instructions', 'secretly')."
+  [56]="Tool descriptions should not reference or modify behavior of other tools. Each tool must be self-contained."
+  [57]="Tool parameters should not request conversation history. Remove parameters named 'conversation_history', 'chat_history', etc."
+  [58]="Never pass user-supplied input directly to shell commands. Use parameterized APIs (spawn with array args, subprocess with shell=False)."
+  [59]="Do not enumerate or serialize all environment variables. Access only specific, documented variables."
+  [60]="Block requests to cloud metadata endpoints (169.254.169.254, metadata.google.internal). Validate URLs against an allowlist."
+  [61]="Bind MCP servers to 127.0.0.1 instead of 0.0.0.0. Enable DNS rebinding protection and validate Origin headers."
+  [62]="Tool definitions should be static. Do not fetch tool definitions remotely or gate them on time/version conditions."
 )
 
 json_escape() {
